@@ -6,19 +6,17 @@ namespace Modules\CMS\Http\Controllers;
 
 use Illuminate\Support\Facades\Validator;
 use Modules\CMS\Actions\Contents\GetContentsByRelationAction;
+use Modules\Core\Http\Controllers\Controller;
 use Modules\Core\Http\Controllers\CrudController;
 use Modules\Core\Http\Requests\ListRequest;
-use Modules\Core\Services\Crud\CrudService;
 use Symfony\Component\HttpFoundation\Response;
 
-final class ContentsController extends CrudController
+final class ContentsController extends Controller
 {
     public function __construct(
         private readonly GetContentsByRelationAction $getContentsByRelationAction,
-        CrudService $crudService,
-    ) {
-        parent::__construct($crudService);
-    }
+        private readonly CrudController $crud,
+    ) {}
 
     public function getContentsByRelation(ListRequest $request, string $relation, string $value, string $entity): Response
     {
@@ -31,6 +29,6 @@ final class ContentsController extends CrudController
         // filters reach parsed()/list() instead of being silently dropped.
         $request->setValidator(Validator::make($request->all(), $request->rules()));
 
-        return $this->list($request);
+        return $this->crud->list($request);
     }
 }
