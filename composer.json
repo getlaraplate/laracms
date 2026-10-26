@@ -2,7 +2,7 @@
   "name": "getlaraplate/laracms",
   "vendor": "getlaraplate",
   "description": "Laraplate CMS module: contents, categories, tags, moderated comments, presets and multilingual publishing.",
-  "version": "v1.47.1",
+  "version": "v1.47.2",
   "keywords": [
     "laravel",
     "laraplate",

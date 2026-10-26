@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.47.2] - 2026-10-26
+
+### 🚀 Features
+
+- *(cms)* Comments and ratings are never versioned (D8)
+- *(cms)* Content, comment, contributor and tag translations record on their owner (D28)
+
+### 🐛 Bug Fixes
+
+- *(location)* GetSearchMapping() returns the mapping keyed by name
+
+### 🚜 Refactor
+
+- *(cms)* Update ContentsController to extend Controller and adjust list method usage
+
+### 📚 Documentation
+
+- *(cms)* Comments, ratings and translations have no history of their own
+- *(cms)* Translations are rows of their owner's history
+
 ## [1.47.1] - 2026-10-21
 
 ### 🚀 Features
