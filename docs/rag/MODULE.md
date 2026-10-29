@@ -388,7 +388,7 @@ set through `IPreloadsAppendedRelations` under the media permission and ACL of t
 safe media projection, and `null` when the caller may not read it. `ContentTranslation`, `TagTranslation`,
 `CommentTranslation`, `ContributorTranslation`, `ContentReference` and `ContentRating` are parts of their parent
 (`IsPartOfParent`). Comments, ratings and the translation models have no version history of their own: comments and
-ratings are not part of the document (`INeverVersionedModel`), and a translation's state belongs to its owner: a change of a content, contributor, tag or comment translation, or of a category or location translation written through its owner, is a row of the owner's history (one per locale), and a save of a content with its translations is one revision. Anonymous responses share one cache entry per entity that uses the response cache; contents do not
+ratings are not part of the document (`INeverVersionedModel`), and a translation's state belongs to its owner: a change of a content, contributor, tag or comment translation, or of a category or location translation written through its owner, is a row of the owner's history (one per locale), and a save of a content with its translations is one revision. A content deleted for good keeps one snapshot set holding the content, one row per locale and one per import origin (reason `manual`, or `expired` when `model:clear-expired` purges it from the bin); a versioned model that extends contents and is deleted with them gets its own snapshot set. Anonymous responses share one cache entry per entity that uses the response cache; contents do not
 use it. Full behaviour: `Modules/Core/docs/rag/API_ACCESS_CONTROL.md`.
 
 ### Filament module integration
