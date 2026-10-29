@@ -6,6 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\CMS\Models\Content;
 use Modules\CMS\Tests\TestCase;
 use Modules\Core\Approvals\Operation;
+use Modules\Core\Helpers\HelpersCache;
 use Modules\Core\Models\ModelEmbedding;
 use Modules\Core\Models\Modification;
 
@@ -51,4 +52,18 @@ it('keeps them when the record only goes to the bin', function (): void {
     $this->content->delete();
 
     expect(children_of($this->content))->toBe([1, 1, 1]);
+});
+
+it('removes them when model:clear-expired purges the record from the bin', function (): void {
+    config()->set('core.soft_deletes.expiration_days', 5);
+    HelpersCache::setModels('active', [Content::class]);
+    $this->content->delete();
+    Content::withTrashed()->whereKey($this->content->getKey())->update(['deleted_at' => now()->subDays(10)]);
+
+    $this->artisan('model:clear-expired')->assertSuccessful();
+
+    expect(Content::withTrashed()->whereKey($this->content->getKey())->exists())->toBeFalse()
+        ->and(children_of($this->content))->toBe([0, 1, 0]);
+
+    HelpersCache::clearModels();
 });
