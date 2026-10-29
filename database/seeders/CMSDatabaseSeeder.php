@@ -174,9 +174,7 @@ final class CMSDatabaseSeeder extends Seeder
             self::internalSettingsDefinition('CMS', self::runtimeSettingDefinitions()),
         );
 
-        $this->command?->line(
-            '    - created ' . count($outcome->created) . ', realigned ' . count($outcome->realigned) . ", unchanged {$outcome->unchanged}",
-        );
+        $this->logReconciliation($outcome);
     }
 
     private function defaultFields(): void
@@ -185,41 +183,43 @@ final class CMSDatabaseSeeder extends Seeder
 
         $field_model = new Field;
         $this->fields = $field_model->newQuery()->withoutGlobalScopes()->get()->keyBy('name');
+        $created = 0;
+        $unchanged = 0;
 
-        $field_model->getConnection()->transaction(function (): void {
+        $field_model->getConnection()->transaction(function () use (&$created, &$unchanged): void {
             foreach (['subtitle'] as $field) {
                 if (! $this->fields->has($field)) {
                     $this->fields->put($field, $this->create(Field::class, ['name' => $field, 'type' => FieldType::Text, 'options' => (object) ['max_length' => 255], 'is_translatable' => true]));
-                    $this->command?->line("    - {$field} <fg=green>created</>");
+                    $created++;
                 } else {
-                    $this->command?->line("    - {$field} already exists");
+                    $unchanged++;
                 }
             }
 
             foreach (['short_content'] as $field) {
                 if (! $this->fields->has($field)) {
                     $this->fields->put($field, $this->create(Field::class, ['name' => $field, 'type' => FieldType::Textarea, 'options' => (object) ['max_length' => 65535], 'is_translatable' => true]));
-                    $this->command?->line("    - {$field} <fg=green>created</>");
+                    $created++;
                 } else {
-                    $this->command?->line("    - {$field} already exists");
+                    $unchanged++;
                 }
             }
 
             foreach (['content'] as $field) {
                 if (! $this->fields->has($field)) {
                     $this->fields->put($field, $this->create(Field::class, ['name' => $field, 'type' => FieldType::Editor, 'options' => (object) [], 'is_translatable' => true]));
-                    $this->command?->line("    - {$field} <fg=green>created</>");
+                    $created++;
                 } else {
-                    $this->command?->line("    - {$field} already exists");
+                    $unchanged++;
                 }
             }
 
             foreach (['period_from', 'period_to'] as $field) {
                 if (! $this->fields->has($field)) {
                     $this->fields->put($field, $this->create(Field::class, ['name' => $field, 'type' => FieldType::Datetime, 'options' => (object) ['format' => 'Y-m-d H:i:s'], 'is_translatable' => false]));
-                    $this->command?->line("    - {$field} <fg=green>created</>");
+                    $created++;
                 } else {
-                    $this->command?->line("    - {$field} already exists");
+                    $unchanged++;
                 }
             }
 
@@ -227,29 +227,31 @@ final class CMSDatabaseSeeder extends Seeder
 
             if (! $this->fields->has($field)) {
                 $this->fields->put($field, $this->create(Field::class, ['name' => $field, 'type' => FieldType::Email, 'options' => (object) [], 'is_translatable' => false]));
-                $this->command?->line("    - {$field} <fg=green>created</>");
+                $created++;
             } else {
-                $this->command?->line("    - {$field} already exists");
+                $unchanged++;
             }
 
             $field = 'phone';
 
             if (! $this->fields->has($field)) {
                 $this->fields->put($field, $this->create(Field::class, ['name' => $field, 'type' => FieldType::Phone, 'options' => (object) [], 'is_translatable' => false]));
-                $this->command?->line("    - {$field} <fg=green>created</>");
+                $created++;
             } else {
-                $this->command?->line("    - {$field} already exists");
+                $unchanged++;
             }
 
             foreach (['website', 'linkedin', 'twitter', 'facebook', 'instagram'] as $field) {
                 if (! $this->fields->has($field)) {
                     $this->fields->put($field, $this->create(Field::class, ['name' => $field, 'type' => FieldType::Url, 'options' => (object) [], 'is_translatable' => false]));
-                    $this->command?->line("    - {$field} <fg=green>created</>");
+                    $created++;
                 } else {
-                    $this->command?->line("    - {$field} already exists");
+                    $unchanged++;
                 }
             }
         });
+
+        $this->logOutcome($created, 0, $unchanged);
     }
 
     private function defaultEntities(): void
@@ -258,8 +260,10 @@ final class CMSDatabaseSeeder extends Seeder
 
         $entity_model = new Entity;
         $this->entities = $entity_model->newQuery()->withoutGlobalScopes()->get()->keyBy('name');
+        $created = 0;
+        $unchanged = 0;
 
-        $entity_model->getConnection()->transaction(function (): void {
+        $entity_model->getConnection()->transaction(function () use (&$created, &$unchanged): void {
             $standard = 'standard';
 
             $entities = [
@@ -329,12 +333,14 @@ final class CMSDatabaseSeeder extends Seeder
                     // do not fire pivot model events that would otherwise trigger versioning.
                     resolve(PresetVersioningService::class)->createVersion($preset);
 
-                    $this->command?->line("    - {$entity['name']} <fg=green>created</>");
+                    $created++;
                 } else {
-                    $this->command?->line("    - {$entity['name']} already exists");
+                    $unchanged++;
                 }
             }
         });
+
+        $this->logOutcome($created, 0, $unchanged);
     }
 
     private function defaultRoles(): void
@@ -360,6 +366,8 @@ final class CMSDatabaseSeeder extends Seeder
         );
 
         $name = self::PUBLISHER_ROLE;
+        $created = 0;
+        $unchanged = 0;
 
         if (! $role_class::query()->where(['name' => $name, 'guard_name' => $web])->exists()) {
             $this->create($role_class, [
@@ -372,12 +380,16 @@ final class CMSDatabaseSeeder extends Seeder
                         ->orWhere('name', 'like', '%.' . ActionEnum::Select->value))
                     ->get(),
             ]);
-            $this->command?->line("    - {$name} <fg=green>created</>");
+            $created++;
         } else {
-            $this->command?->line("    - {$name} already exists");
+            $unchanged++;
         }
 
-        $this->grantPublisherRelatedReads($role_class, $permission_class, $name, $web);
+        match ($this->grantPublisherRelatedReads($role_class, $permission_class, $name, $web)) {
+            true => $created++,
+            false => $unchanged++,
+            null => null,
+        };
 
         $admin = $role_class::query()->where(['name' => CoreDatabaseSeeder::getDefaultUserRoles()['admin'], 'guard_name' => $web])->first();
 
@@ -389,6 +401,8 @@ final class CMSDatabaseSeeder extends Seeder
                 ->whereNot('name', 'like', '%.' . ActionEnum::Lock->value)
                 ->pluck('id'),
         );
+
+        $this->logOutcome($created, 0, $unchanged);
     }
 
     /**
@@ -398,16 +412,17 @@ final class CMSDatabaseSeeder extends Seeder
      * against `core_settings.select`), the latter narrowed to the public ones by an ACL, and the CMS entities that
      * categories and presets resolve (`core_entities.select`, narrowed to the CMS types by
      * {@see self::defaultSharedTableAcls()}). Given on every run, so an existing publisher role gains them too.
+     * Returns what {@see self::ensureAcl()} did with the settings ACL, null when there is no publisher.
      *
      * @param  class-string<Role>  $role_class
      * @param  class-string<Permission>  $permission_class
      */
-    private function grantPublisherRelatedReads(string $role_class, string $permission_class, string $name, string $guard): void
+    private function grantPublisherRelatedReads(string $role_class, string $permission_class, string $name, string $guard): ?bool
     {
         $publisher = $role_class::query()->where(['name' => $name, 'guard_name' => $guard])->first(['id', 'guard_name']);
 
         if ($publisher === null) {
-            return;
+            return null;
         }
 
         $names = array_map(
@@ -421,7 +436,7 @@ final class CMSDatabaseSeeder extends Seeder
 
         $settings_table = (new Setting)->getTable();
 
-        $this->ensureAcl(
+        return $this->ensureAcl(
             $permission_class,
             $publisher,
             PermissionName::forClass(Setting::class, ActionEnum::Select->value),
@@ -476,6 +491,9 @@ final class CMSDatabaseSeeder extends Seeder
             ContentRating::class => null,
         ];
 
+        $created = 0;
+        $unchanged = 0;
+
         foreach ($grants as $model_class => $filters) {
             $permission_name = PermissionName::forClass($model_class, ActionEnum::Select->value);
             $permission_id = $permission_class::query()->where(['name' => $permission_name, 'guard_name' => $guest->guard_name])->value('id');
@@ -486,33 +504,42 @@ final class CMSDatabaseSeeder extends Seeder
                 continue;
             }
 
-            $guest->permissions()->syncWithoutDetaching([$permission_id]);
+            if ($guest->permissions()->syncWithoutDetaching([$permission_id])['attached'] === []) {
+                $unchanged++;
+            } else {
+                $created++;
+            }
 
             if ($filters instanceof FiltersGroup) {
-                $this->ensureAcl($permission_class, $guest, $permission_name, $filters, 'Anonymous readers of the api read only what is published.');
+                match ($this->ensureAcl($permission_class, $guest, $permission_name, $filters, 'Anonymous readers of the api read only what is published.')) {
+                    true => $created++,
+                    false => $unchanged++,
+                    null => null,
+                };
             }
         }
+
+        $this->logOutcome($created, 0, $unchanged);
     }
 
     /**
      * Create the ACL of a permission for a role unless one exists: a re-seed never overwrites what an operator changed.
+     * Returns true when it created the ACL, false when one existed, null when the permission is missing.
      *
      * @param  class-string<Permission>  $permission_class
      */
-    private function ensureAcl(string $permission_class, Role $role, string $permission_name, FiltersGroup $filters, string $description): void
+    private function ensureAcl(string $permission_class, Role $role, string $permission_name, FiltersGroup $filters, string $description): ?bool
     {
         $permission = $permission_class::query()->where(['name' => $permission_name, 'guard_name' => $role->guard_name])->first(['id']);
 
         if ($permission === null) {
             $this->command?->line("    - permission {$permission_name} missing, skipping its ACL");
 
-            return;
+            return null;
         }
 
         if (ACL::query()->where('permission_id', $permission->id)->where('role_id', $role->id)->exists()) {
-            $this->command?->line("    - {$permission_name} ACL already exists");
-
-            return;
+            return false;
         }
 
         $acl = new ACL;
@@ -528,7 +555,7 @@ final class CMSDatabaseSeeder extends Seeder
         ]);
         $acl->save();
 
-        $this->command?->line("    - {$permission_name} ACL <fg=green>created</>");
+        return true;
     }
 
     /**
@@ -564,15 +591,24 @@ final class CMSDatabaseSeeder extends Seeder
             Entity::class => new FiltersGroup([new Filter('type', EntityType::values(), FilterOperator::In)]),
         ];
 
+        $created = 0;
+        $unchanged = 0;
+
         foreach ($acls as $model_class => $filters) {
-            $this->ensureAcl(
+            match ($this->ensureAcl(
                 $permission_class,
                 $publisher,
                 PermissionName::forModel(new $model_class, ActionEnum::Select->value),
                 $filters,
                 'Publishers read only the CMS rows of a table shared with other modules.',
-            );
+            )) {
+                true => $created++,
+                false => $unchanged++,
+                null => null,
+            };
         }
+
+        $this->logOutcome($created, 0, $unchanged);
     }
 
     private function assignFieldToPreset(Preset $preset, Field $field, bool $is_required): void
