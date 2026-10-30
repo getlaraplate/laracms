@@ -15,6 +15,7 @@ use Modules\CMS\Tests\TestCase;
 use Modules\Core\Database\Seeders\CoreDatabaseSeeder;
 use Modules\Core\Events\ModelRequiresIndexing;
 use Modules\Core\Support\CrudApiExposure;
+use Modules\Core\Tests\Support\FakeVectorProfile;
 
 uses(TestCase::class, RefreshDatabase::class);
 
@@ -26,7 +27,7 @@ uses(TestCase::class, RefreshDatabase::class);
 beforeEach(function (): void {
     Cache::flush();
     Carbon::setTestNow('2026-08-19 12:00:00');
-    config()->set('core.search.vector.enabled', false);
+    FakeVectorProfile::none();
     CrudApiExposure::enable();
     setupCMSEntities([EntityType::Contents]);
 
