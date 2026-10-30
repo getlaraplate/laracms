@@ -97,6 +97,8 @@ trait HasTags
      */
     public function tagsWithType(?string $type = null): Collection
     {
+        $type = Tag::normalizeType($type);
+
         return $this->tags->filter(fn (Tag $tag): bool => $tag->type === $type);
     }
 
@@ -187,6 +189,8 @@ trait HasTags
 
     public function hasTag(string|int|Tag $tag, ?string $type = null): bool
     {
+        $type = Tag::normalizeType($type);
+
         return $this->tags
             ->when($type !== null, fn (Collection $tags): Collection => $tags->where('type', $type))
             ->contains(fn (Tag $model_tag): bool => $model_tag->name === $tag || $model_tag->id === $tag);
@@ -198,6 +202,8 @@ trait HasTags
      */
     protected static function convertToTags(string|array|ArrayAccess|Tag $values, ?string $type = null): SupportCollection
     {
+        $type = Tag::normalizeType($type);
+
         return SupportCollection::make(self::normalizeTagsInput($values))
             ->map(function (string|Tag $value) use ($type): ?Tag {
                 if ($value instanceof Tag) {
@@ -364,7 +370,7 @@ trait HasTags
                 '=',
                 $tag_model->getTable() . '.' . $tag_model->getKeyName(),
             )
-            ->where($tag_model->getTable() . '.type', $type)
+            ->where($tag_model->getTable() . '.type', Tag::normalizeType($type))
             ->pluck('tag_id')
             ->filter(static fn (mixed $id): bool => is_int($id) || is_string($id))
             ->map(static function (mixed $id): int {
