@@ -434,3 +434,59 @@ it('matches the tags of a model by type whatever way the type is spelled', funct
     expect($content->tagsWithType('genre')->pluck('name')->all())->toBe(['Jazz'])
         ->and($content->hasTag('Jazz', 'GENRE'))->toBeTrue();
 });
+
+it('refuses a second live translation with the same slug in a locale', function (): void {
+    $locale = Modules\Core\Helpers\LocaleContext::getDefault();
+    Tag::factory()->create()->setTranslation($locale, ['name' => 'Jazz', 'slug' => 'jazz']);
+
+    expect(fn () => Tag::factory()->create()->setTranslation($locale, ['name' => 'Jazz', 'slug' => 'jazz']))
+        ->toThrow(Illuminate\Database\UniqueConstraintViolationException::class);
+});
+
+it('lets two locales share a slug on different tags', function (): void {
+    $default_tag = Tag::factory()->create();
+    $default_tag->setTranslation(Modules\Core\Helpers\LocaleContext::getDefault(), ['name' => 'Jazz', 'slug' => 'jazz']);
+    $german_tag = Tag::factory()->create();
+    $german_tag->setTranslation('de', ['name' => 'Jazz', 'slug' => 'jazz']);
+
+    expect(Tag::findByIdentity('Jazz', 'de')?->id)->toBe($german_tag->id)
+        ->and(Tag::findByIdentity('Jazz')?->id)->toBe($default_tag->id);
+});
+
+it('finds a tag by the slug of a name, whatever its case', function (): void {
+    $tag = Tag::findOrCreateFromString('Libri');
+
+    expect(Tag::findOrCreateFromString('libri')->id)->toBe($tag->id)
+        ->and(Tag::query()->count())->toBe(1);
+});
+
+it('restores a trashed tag instead of creating a second one', function (): void {
+    $tag = Tag::findOrCreateFromString('Jazz');
+    $tag->delete();
+
+    $found = Tag::findOrCreateFromString('Jazz');
+
+    expect($found->id)->toBe($tag->id)
+        ->and($found->trashed())->toBeFalse()
+        ->and(Tag::withTrashed()->count())->toBe(1);
+});
+
+it('gives a tag without type the type asked for', function (): void {
+    $tag = Tag::findOrCreateFromString('Jazz');
+
+    expect(Tag::findOrCreateFromString('Jazz', 'genre')->id)->toBe($tag->id)
+        ->and($tag->fresh()->type)->toBe('genre');
+});
+
+it('refuses a type different from the one the tag has', function (): void {
+    Tag::findOrCreateFromString('Jazz', 'genre');
+
+    expect(fn () => Tag::findOrCreateFromString('Jazz', 'era'))->toThrow(InvalidArgumentException::class);
+});
+
+it('finds from string of any type when no type is given', function (): void {
+    $tag = Tag::findOrCreateFromString('Jazz', 'genre');
+
+    expect(Tag::findFromString('Jazz')?->id)->toBe($tag->id)
+        ->and(Tag::findFromString('Jazz', 'era'))->toBeNull();
+});

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\CMS\Models\Translations;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 use Modules\CMS\Enums\CMSTables;
 use Modules\CMS\Models\Tag;
 use Modules\Core\Contracts\IsPartOfParent;
@@ -15,6 +16,13 @@ use Modules\Core\Overrides\Model;
 use Modules\Core\Services\Translation\Definitions\ITranslated;
 use Override;
 
+/**
+ * @property int $id
+ * @property int $tag_id
+ * @property string $locale
+ * @property string $name
+ * @property string $slug
+ */
 final class TagTranslation extends Model implements IsPartOfParent, ITranslated
 {
     use HasSlug;
@@ -37,6 +45,17 @@ final class TagTranslation extends Model implements IsPartOfParent, ITranslated
         'name',
         'slug',
     ];
+
+    /**
+     * The slug a tag named `$name` gets: the slugger `generateSlug()` uses, so a lookup by name meets the slug
+     * a translation was saved with.
+     */
+    public static function slugFromName(string $name): string
+    {
+        $slugger = config('cms.slugger', Str::class . '::slug');
+
+        return (string) call_user_func($slugger, mb_trim($name));
+    }
 
     /**
      * The relation to the record this one only exists inside, whose visibility it inherits.

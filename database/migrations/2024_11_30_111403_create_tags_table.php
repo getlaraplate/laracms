@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create($table_name, static function (Blueprint $table) use ($table_name): void {
             $table->id();
 
-            // Unique constraints for name and slug are now in tags_translations table (per locale)
+            // The identity of a tag is its slug per locale: the unique constraint is on tags_translations (locale, slug).
             $table->string('type')->nullable()->index("{$table_name}_type_IDX")->comment('The type of the tag');
             $table->integer('order_column')->nullable(false)->default(0)->index("{$table_name}_order_column_IDX")->comment('The order of the tag');
 

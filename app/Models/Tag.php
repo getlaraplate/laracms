@@ -21,6 +21,7 @@ use Modules\Core\Helpers\LocaleContext;
 use Modules\Core\Models\Concerns\HasPath;
 use Modules\Core\Models\Concerns\HasTranslations;
 use Modules\Core\Models\Concerns\SortableTrait;
+use Modules\Core\Overrides\LocaleScope;
 use Modules\Core\Overrides\Model;
 use Override;
 use Spatie\EloquentSortable\Sortable;
@@ -104,16 +105,50 @@ final class Tag extends Model implements Sortable
         return self::query()->withType($type)->get();
     }
 
+    /**
+     * The tag a name identifies: the one, trashed included, whose live translation in `$locale` (the default
+     * locale when null) has the slug of that name. A tag is one per locale and slug, whatever its type.
+     */
+    public static function findByIdentity(string $name, ?string $locale = null): ?self
+    {
+        $tag_id = TagTranslation::query()
+            ->where('locale', $locale ?? LocaleContext::getDefault())
+            ->where('slug', TagTranslation::slugFromName($name))
+            ->value('tag_id');
+
+        if ($tag_id === null) {
+            return null;
+        }
+
+        return self::withTrashed()->withoutGlobalScope(LocaleScope::class)->whereKey($tag_id)->first();
+    }
+
+    /**
+     * Whether another tag already has a live translation with `$slug` in `$locale`.
+     */
+    public static function slugTakenInLocale(string $slug, string $locale, ?int $except_tag_id = null): bool
+    {
+        return TagTranslation::query()
+            ->where('locale', $locale)
+            ->where('slug', $slug)
+            ->when($except_tag_id !== null, static fn (Builder $query): Builder => $query->where('tag_id', '!=', $except_tag_id))
+            ->exists();
+    }
+
+    /**
+     * The tag a name identifies, not trashed; with a type, only if the tag has that type. No type means any type.
+     */
     public static function findFromString(string $name, ?string $type = null): ?self
     {
-        return self::query()
-            ->where('type', self::normalizeType($type))
-            ->whereHas('translations', static function (Builder $query) use ($name): void {
-                /** @var Builder<TagTranslation> $query */
-                $query->where('name', $name)
-                    ->orWhere('slug', $name);
-            })
-            ->first();
+        $tag = self::findByIdentity($name);
+
+        if (! $tag instanceof self || $tag->trashed()) {
+            return null;
+        }
+
+        $type = self::normalizeType($type);
+
+        return $type === null || $tag->type === $type ? $tag : null;
     }
 
     /**
@@ -130,22 +165,36 @@ final class Tag extends Model implements Sortable
             ->get();
     }
 
+    /**
+     * The tag a name identifies, restored if trashed and given `$type` if it has none; created when there is none.
+     *
+     * @throws InvalidArgumentException When the tag has a type other than `$type`
+     */
     public static function findOrCreateFromString(string $name, ?string $type = null): self
     {
-        $tag = self::findFromString($name, $type);
+        $tag = self::findByIdentity($name);
 
-        if (! $tag instanceof self) {
-            $tag = self::query()->create([
-                'type' => $type,
-            ]);
-            // Set name in default locale translation
-            $locale = LocaleContext::getDefault();
-            $tag->setTranslation($locale, [
-                'name' => $name,
-            ]);
+        if ($tag instanceof self) {
+            if ($tag->trashed()) {
+                $tag->restore();
+            }
+
+            throw_unless($tag->adoptType($type), InvalidArgumentException::class, sprintf('Tag %s has type %s, not %s', $name, $tag->type, self::normalizeType($type)));
+
+            if ($tag->isDirty('type')) {
+                $tag->save();
+            }
 
             return $tag;
         }
+
+        $tag = self::query()->create([
+            'type' => $type,
+        ]);
+        // Set name in default locale translation
+        $tag->setTranslation(LocaleContext::getDefault(), [
+            'name' => $name,
+        ]);
 
         return $tag;
     }
@@ -175,6 +224,27 @@ final class Tag extends Model implements Sortable
         $normalized = Str::slug($type);
 
         return $normalized === '' ? null : $normalized;
+    }
+
+    /**
+     * Gives this tag `$type` when it has none, without saving. False when it already has another type, which it
+     * keeps: the type is one per tag, never translated.
+     */
+    public function adoptType(?string $type): bool
+    {
+        $type = self::normalizeType($type);
+
+        if ($type === null || $this->type === $type) {
+            return true;
+        }
+
+        if ($this->type === null) {
+            $this->type = $type;
+
+            return true;
+        }
+
+        return false;
     }
 
     /**
