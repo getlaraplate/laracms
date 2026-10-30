@@ -14,7 +14,11 @@ use Modules\CMS\Models\Translations\TagTranslation;
  */
 final class TagMatcher
 {
-    public function findExisting(string $slug, string $locale, ?ImportConnectionContext $context = null): ?int
+    /**
+     * `$locking` reads the latest committed row instead of the transaction's snapshot: after a unique violation
+     * inside an import transaction, MySQL's REPEATABLE READ would otherwise not see the tag another import created.
+     */
+    public function findExisting(string $slug, string $locale, ?ImportConnectionContext $context = null, bool $locking = false): ?int
     {
         $translation = $context?->model(TagTranslation::class) ?? new TagTranslation;
 
@@ -22,6 +26,7 @@ final class TagMatcher
             ->where('locale', $locale)
             ->where('slug', $slug)
             ->whereNull('deleted_at')
+            ->when($locking, static fn ($query) => $query->sharedLock())
             ->value('tag_id');
 
         return is_numeric($tag_id) ? (int) $tag_id : null;

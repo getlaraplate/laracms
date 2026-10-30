@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\CMS\Models\Translations;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
 use Modules\CMS\Enums\CMSTables;
 use Modules\CMS\Models\Tag;
 use Modules\Core\Contracts\IsPartOfParent;
@@ -47,14 +46,15 @@ final class TagTranslation extends Model implements IsPartOfParent, ITranslated
     ];
 
     /**
-     * The slug a tag named `$name` gets: the slugger `generateSlug()` uses, so a lookup by name meets the slug
-     * a translation was saved with.
+     * The slug a tag named `$name` gets: the one `generateSlug()` gives a translation with that name, so a lookup
+     * by name meets the slug the translation was saved with ("Web 2.0" is `web-2-0`).
      */
     public static function slugFromName(string $name): string
     {
-        $slugger = config('cms.slugger', Str::class . '::slug');
+        $name = mb_trim($name);
 
-        return (string) call_user_func($slugger, mb_trim($name));
+        // generateSlug() keeps the placeholder of an empty value, which would turn no name into the slug "name".
+        return $name === '' ? '' : (new self(['name' => $name]))->generateSlug();
     }
 
     /**

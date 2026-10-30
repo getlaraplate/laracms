@@ -131,3 +131,31 @@ it('uses the tag a concurrent import created', function (): void {
     expect($tag_id)->toBe($competitor_id)
         ->and(Tag::withTrashed()->count())->toBe(1);
 });
+
+it('keeps the slug of a tag a source renames into a slug another tag has, and logs it', function (): void {
+    Log::spy();
+    $libri_id = ($this->import)('naxos_api@a', 1, 'Libri', 'libri');
+    ($this->import)('feed', 2, 'Narrativa', 'narrativa');
+
+    expect(($this->import)('naxos_api@a', 1, 'Narrativa', 'narrativa'))->toBe($libri_id)
+        ->and(TagTranslation::query()->where('tag_id', $libri_id)->value('slug'))->toBe('libri');
+    Log::shouldHaveReceived('warning')->once()->withArgs(static fn (string $message): bool => $message === 'Tag slug conflict during import');
+});
+
+it('does not revive a tag an editor trashed when a source sends it deleted', function (): void {
+    $tag_id = ($this->import)('naxos_api@a', 1, 'Libri', 'libri');
+    ($this->import)('feed', 2, 'Libri', 'libri');
+    Tag::query()->findOrFail($tag_id)->delete();
+
+    ($this->import)('naxos_api@a', 1, 'Libri', 'libri', deleted_at: '2026-10-30 10:00:00');
+
+    expect(Tag::withTrashed()->findOrFail($tag_id)->trashed())->toBeTrue();
+});
+
+it('does not delete a tag it found only by slug', function (): void {
+    $tag = Tag::findOrCreateFromString('Jazz');
+
+    ($this->import)('feed', 2, 'Jazz', 'jazz', deleted_at: '2026-10-30 10:00:00');
+
+    expect($tag->fresh()->trashed())->toBeFalse();
+});

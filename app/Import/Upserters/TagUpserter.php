@@ -42,23 +42,27 @@ final class TagUpserter
         $context ??= new ImportConnectionContext(new Tag);
         $tag_model = $context->model(Tag::class);
         $slug = TagTranslation::slugFromName($dto->slug);
-        $existing_id = $this->reference_resolver->resolve(
+        $origin_id = $this->reference_resolver->resolve(
             'tags',
             Tag::class,
             $dto->externalId,
             $dto->sourceType,
             $context,
-        ) ?? $this->tag_matcher->findExisting($slug, $this->locale, $context);
+        );
+        $existing_id = $origin_id ?? $this->tag_matcher->findExisting($slug, $this->locale, $context);
 
         $tag = $existing_id !== null
             ? $this->existingTag($tag_model, $existing_id)
             : $this->createTag($tag_model, $dto, $slug, $context);
+        $is_this_source_tag = $tag->wasRecentlyCreated || $origin_id !== null;
 
-        if (! $tag->wasRecentlyCreated) {
+        // A tag the source sends as deleted is not revived to be updated: an editor may have trashed it.
+        if (! $tag->wasRecentlyCreated && ! ($tag->trashed() && $dto->deletedAt !== null)) {
             $this->updateTag($tag, $dto, $slug);
         }
 
-        if ($dto->deletedAt !== null && ! $tag->trashed() && ! $this->locator->hasOriginFromAnotherSource($tag, $dto->sourceType)) {
+        // Only a tag this source created or already owned can be deleted by it, and only while no other source brings it.
+        if ($dto->deletedAt !== null && $is_this_source_tag && ! $tag->trashed() && ! $this->locator->hasOriginFromAnotherSource($tag, $dto->sourceType)) {
             $tag->delete();
         }
 
@@ -78,12 +82,15 @@ final class TagUpserter
         return $tag_id;
     }
 
-    private function existingTag(Tag $tag_model, int $tag_id): Tag
+    private function existingTag(Tag $tag_model, int $tag_id, bool $locking = false): Tag
     {
         // Bypass the soft-delete global scope: an id resolved from the origin
         // registry or a translation slug may point to a soft-deleted tag, which
         // must still be found (and reused) rather than crashing the import.
-        return $tag_model->newQueryWithoutScopes()->whereKey($tag_id)->firstOrFail();
+        return $tag_model->newQueryWithoutScopes()
+            ->whereKey($tag_id)
+            ->when($locking, static fn ($query) => $query->sharedLock())
+            ->firstOrFail();
     }
 
     /**
@@ -105,13 +112,13 @@ final class TagUpserter
                 return $tag;
             });
         } catch (UniqueConstraintViolationException $exception) {
-            $existing_id = $this->tag_matcher->findExisting($slug, $this->locale, $context);
+            $existing_id = $this->tag_matcher->findExisting($slug, $this->locale, $context, locking: true);
 
             if ($existing_id === null) {
                 throw $exception;
             }
 
-            return $this->existingTag($tag_model, $existing_id);
+            return $this->existingTag($tag_model, $existing_id, locking: true);
         }
     }
 
@@ -139,12 +146,26 @@ final class TagUpserter
         $this->applyPosition($tag, $dto);
         $tag->save();
 
-        if (! $tag->hasTranslation($this->locale) || ! $this->locator->hasOriginFromAnotherSource($tag, $dto->sourceType)) {
-            $tag->setTranslation($this->locale, [
-                'name' => $dto->name,
-                'slug' => $slug,
-            ]);
+        if ($tag->hasTranslation($this->locale) && $this->locator->hasOriginFromAnotherSource($tag, $dto->sourceType)) {
+            return;
         }
+
+        // A source that renames its tag into a slug another tag has keeps the old text: two tags cannot share it.
+        if (Tag::slugTakenInLocale($slug, $this->locale, (int) $tag->id)) {
+            Log::warning('Tag slug conflict during import', [
+                'tag_id' => $tag->id,
+                'slug' => $slug,
+                'source' => $dto->sourceType,
+                'external_id' => $dto->externalId,
+            ]);
+
+            return;
+        }
+
+        $tag->setTranslation($this->locale, [
+            'name' => $dto->name,
+            'slug' => $slug,
+        ]);
     }
 
     /**

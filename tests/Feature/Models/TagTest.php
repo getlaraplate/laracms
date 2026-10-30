@@ -526,3 +526,10 @@ it('accepts through the model rules the slug of the tag being updated', function
 
     expect($validator->errors()->keys())->not->toContain('translations.0.slug');
 });
+
+it('finds again a tag whose name the slugger changes', function (string $name): void {
+    $tag = Tag::findOrCreateFromString($name);
+
+    expect(Tag::findOrCreateFromString($name)->id)->toBe($tag->id)
+        ->and(Tag::query()->count())->toBe(1);
+})->with(['Web 2.0', 'node.js', 'Rock@Night']);

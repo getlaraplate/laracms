@@ -6,6 +6,8 @@ namespace Modules\CMS\Models;
 
 use ArrayAccess;
 use Closure;
+use Illuminate\Contracts\Validation\DataAwareRule;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -13,8 +15,6 @@ use Illuminate\Database\Eloquent\Collection as DbCollection;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
-use Illuminate\Validation\NestedRules;
-use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use Modules\CMS\Database\Factories\TagFactory;
 use Modules\CMS\Enums\CMSTables;
@@ -273,16 +273,16 @@ final class Tag extends Model implements Sortable
             // 'slug' => 'sometimes|nullable|string|max:255', // Validated in translation
             'translations' => 'sometimes|array',
             'translations.*.locale' => 'required|string|max:10',
-            'translations.*.slug' => self::freeSlugRules('slug', ['sometimes', 'nullable', 'string', 'max:255']),
-            'translations.*.name' => self::freeSlugRules('name', ['required', 'string', 'max:255']),
+            'translations.*.slug' => ['sometimes', 'nullable', 'string', 'max:255', self::freeSlugRule('slug')],
+            'translations.*.name' => ['required', 'string', 'max:255', self::freeSlugRule('name')],
         ]);
         $rules['update'] = array_merge($rules['update'], [
             // 'name' => 'sometimes|required|string|max:255', // Validated in translation
             // 'slug' => 'sometimes|nullable|string|max:255', // Validated in translation
             'translations' => 'sometimes|array',
             'translations.*.locale' => 'required|string|max:10',
-            'translations.*.slug' => self::freeSlugRules('slug', ['sometimes', 'nullable', 'string', 'max:255'], $this->id),
-            'translations.*.name' => self::freeSlugRules('name', ['sometimes', 'required', 'string', 'max:255'], $this->id),
+            'translations.*.slug' => ['sometimes', 'nullable', 'string', 'max:255', self::freeSlugRule('slug', $this->id)],
+            'translations.*.name' => ['sometimes', 'required', 'string', 'max:255', self::freeSlugRule('name', $this->id)],
         ]);
 
         return $rules;
@@ -381,37 +381,52 @@ final class Tag extends Model implements Sortable
     }
 
     /**
-     * `$base_rules` plus a check that fails on `$field` when another tag already has, in the translation item's
-     * locale, the item's slug, given or generated from its name. The name is checked only when the item carries
-     * no slug, so one collision is reported once.
-     *
-     * @param  list<string>  $base_rules
+     * A rule that fails on `$field` when another tag already has, in the translation item's locale, the item's
+     * slug, given or generated from its name. The name is checked only when the item carries no slug, so one
+     * collision is reported once. A plain rule object, because the CRUD request normalizes rules as arrays.
      */
-    private static function freeSlugRules(string $field, array $base_rules, ?int $except_tag_id = null): NestedRules
+    private static function freeSlugRule(string $field, ?int $except_tag_id = null): ValidationRule
     {
-        return Rule::forEach(static fn (mixed $value, string $attribute, array $data): array => [
-            ...$base_rules,
-            static function (string $attribute_name, mixed $field_value, Closure $fail) use ($attribute, $data, $field, $except_tag_id): void {
-                // The data reaches a forEach callback flattened to dotted keys.
+        return new class($field, $except_tag_id) implements DataAwareRule, ValidationRule
+        {
+            /**
+             * @var array<string, mixed>
+             */
+            private array $data = [];
+
+            public function __construct(private readonly string $field, private readonly ?int $except_tag_id) {}
+
+            /**
+             * @param  array<string, mixed>  $data
+             */
+            public function setData(array $data): static
+            {
+                $this->data = $data;
+
+                return $this;
+            }
+
+            public function validate(string $attribute, mixed $value, Closure $fail): void
+            {
                 $item_path = Str::beforeLast($attribute, '.');
-                $locale = $data[$item_path . '.locale'] ?? null;
-                $given_slug = $data[$item_path . '.slug'] ?? null;
+                $locale = data_get($this->data, $item_path . '.locale');
+                $given_slug = data_get($this->data, $item_path . '.slug');
 
-                if (! is_string($locale) || ! is_string($field_value) || $field_value === '') {
+                if (! is_string($locale) || ! is_string($value) || $value === '') {
                     return;
                 }
 
-                if ($field === 'name' && is_string($given_slug) && $given_slug !== '') {
+                if ($this->field === 'name' && is_string($given_slug) && $given_slug !== '') {
                     return;
                 }
 
-                $slug = $field === 'slug' ? $field_value : TagTranslation::slugFromName($field_value);
+                $slug = $this->field === 'slug' ? $value : TagTranslation::slugFromName($value);
 
-                if (self::slugTakenInLocale($slug, $locale, $except_tag_id)) {
-                    $fail(__('validation.unique', ['attribute' => $field]));
+                if (Tag::slugTakenInLocale($slug, $locale, $this->except_tag_id)) {
+                    $fail(__('validation.unique', ['attribute' => $this->field]));
                 }
-            },
-        ]);
+            }
+        };
     }
 
     /**
