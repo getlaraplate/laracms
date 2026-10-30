@@ -7,9 +7,11 @@ namespace Modules\CMS\Models;
 use ArrayAccess;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection as DbCollection;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Modules\CMS\Database\Factories\TagFactory;
 use Modules\CMS\Enums\CMSTables;
@@ -105,7 +107,7 @@ final class Tag extends Model implements Sortable
     public static function findFromString(string $name, ?string $type = null): ?self
     {
         return self::query()
-            ->where('type', $type)
+            ->where('type', self::normalizeType($type))
             ->whereHas('translations', static function (Builder $query) use ($name): void {
                 /** @var Builder<TagTranslation> $query */
                 $query->where('name', $name)
@@ -158,6 +160,21 @@ final class Tag extends Model implements Sortable
             ->pluck('type')
             ->map(static fn (mixed $type): ?string => is_string($type) ? $type : null)
             ->values();
+    }
+
+    /**
+     * The form a tag type is stored and compared in: a slug, so "Musical Instrument", " musical_instrument "
+     * and "musical-instrument" name the same type. A type with nothing left to slug is no type.
+     */
+    public static function normalizeType(?string $type): ?string
+    {
+        if ($type === null) {
+            return null;
+        }
+
+        $normalized = Str::slug($type);
+
+        return $normalized === '' ? null : $normalized;
     }
 
     /**
@@ -237,6 +254,8 @@ final class Tag extends Model implements Sortable
     #[Scope]
     protected function withType(Builder $query, ?string $type = null): void
     {
+        $type = self::normalizeType($type);
+
         if (! is_null($type)) {
             $query->where('type', $type)->ordered();
         }
@@ -251,6 +270,16 @@ final class Tag extends Model implements Sortable
         $resolved_locale = $locale ?? $this->getCurrentLocale();
 
         $this->applyContainingByTranslatedName($query, $name, $resolved_locale);
+    }
+
+    /**
+     * @return Attribute<?string, ?string>
+     */
+    protected function type(): Attribute
+    {
+        return Attribute::make(
+            set: static fn (?string $value): ?string => self::normalizeType($value),
+        );
     }
 
     protected function casts(): array

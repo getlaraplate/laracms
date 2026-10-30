@@ -254,7 +254,11 @@ flowchart LR
 
 ### Tagging and taxonomy
 
-Tags are polymorphic via the `taggables` morph pivot (`tag_id` + `taggable_id` + `taggable_type`) and translated through `tags_translations`. The `HasTags` trait offers `attachTag`, `detachTag`, `syncTags`, and the scopes `withAllTags`, `withAnyTags`, `withoutTags`, `withAllTagsOfAnyType`, `withAnyTagsOfAnyType`. Categories are CMS-specific taxonomies: `Category` extends `Core\Models\Taxonomy` with table `taxonomies`, sets `EntityType::CATEGORIES`, uses `HasMultimedia`, and connects to `Content` via the `categorizables` pivot keyed on `(content_id, taxonomy_id)`.
+Tags are polymorphic via the `taggables` morph pivot (`tag_id` + `taggable_id` + `taggable_type`) and translated through `tags_translations`. The `HasTags` trait offers `attachTag`, `detachTag`, `syncTags`, and the scopes `withAllTags`, `withAnyTags`, `withoutTags`, `withAllTagsOfAnyType`, `withAnyTagsOfAnyType`.
+
+A tag has an optional free-text `type` that groups it (genre, instrument, ...) and is part of its identity: a tag is matched by its name within its type. The type is stored as a slug (`Tag::normalizeType()`, applied by a mutator on write), and every lookup by type (`findFromString`, `findOrCreateFromString`, `getWithType`, the `withType` scope, and the `HasTags` methods that take a `$type`) slugs the argument the same way, so "Musical Instrument", "musical_instrument" and "musical-instrument" name one type. A type with nothing left to slug is no type (`null`). In the backoffice the type field suggests the types already in use while it is typed, and the tag list is sorted by the slug each row shows (the content locale's, or the default locale's where it is missing), then by id.
+
+Categories are CMS-specific taxonomies: `Category` extends `Core\Models\Taxonomy` with table `taxonomies`, sets `EntityType::CATEGORIES`, uses `HasMultimedia`, and connects to `Content` via the `categorizables` pivot keyed on `(content_id, taxonomy_id)`.
 
 ```mermaid
 flowchart LR

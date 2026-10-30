@@ -405,3 +405,32 @@ it('saves a translated field into a translation that was removed', function (): 
     expect($translation->trashed())->toBeFalse()
         ->and($translation->name)->toBe('Neu');
 });
+
+it('stores the type as a slug, and a type with nothing to slug as no type', function (?string $given, ?string $stored): void {
+    $tag = Tag::factory()->create(['type' => $given]);
+
+    expect($tag->fresh()->type)->toBe($stored);
+})->with([
+    'mixed case with spaces' => [' Genre ', 'genre'],
+    'several words' => ['Musical Instrument', 'musical-instrument'],
+    'underscores' => ['musical_instrument', 'musical-instrument'],
+    'blank' => ['   ', null],
+    'none' => [null, null],
+]);
+
+it('finds the tag of a type whatever way the type is spelled', function (): void {
+    $tag = Tag::findOrCreateFromString('Piano', 'musical-instrument');
+
+    expect(Tag::findOrCreateFromString('Piano', 'Musical Instrument')->id)->toBe($tag->id)
+        ->and(Tag::getWithType('MUSICAL_INSTRUMENT')->pluck('id')->all())->toBe([$tag->id]);
+});
+
+it('matches the tags of a model by type whatever way the type is spelled', function (): void {
+    $content = Content::factory()->create(['valid_from' => now()->subDay(), 'valid_to' => null]);
+    $content->attachTag('Jazz', 'Genre');
+
+    $content->load('tags');
+
+    expect($content->tagsWithType('genre')->pluck('name')->all())->toBe(['Jazz'])
+        ->and($content->hasTag('Jazz', 'GENRE'))->toBeTrue();
+});
