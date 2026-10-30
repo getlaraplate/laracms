@@ -37,6 +37,20 @@ Every upserted record gets a row in `core_record_origins`, written through `Exte
 
 An importer that has no url for a taxonomy leaves `originUrl` null; the origin row is still written and the record stays identifiable.
 
+## One record across several sources
+
+An installation imports from several sources at once (Naxos tenants, feeds, Spaceflight). The origin identifies what one source brought; whether two sources bringing the same thing meet on one record depends on the entity:
+
+| Entity | Across sources | How an import finds an existing record |
+|---|---|---|
+| Tag | shared | origin of this source, then the slug in the import locale (`TagMatcher`), trashed tags included and revived |
+| Location | shared | origin, then slug, then name (`LocationMatcher`) |
+| Contributor | shared | slug in the import locale, then name for the names in `cms.import.contributor_dedup_names` and the default contributor, preferred over an origin whose name changed (`ContributorMatcher`) |
+| Category | owned by the source | origin only: each source's categories are its own section tree, so a category with the same name from two sources stays two categories |
+| Content | owned by the source | origin only |
+
+A tag found through another source's slug gains this source's origin, so it carries one origin per source. A tag another source also brought (`ExternalReferenceLocator::hasOriginFromAnotherSource()`) is not renamed by the import, which writes its name and slug only when it creates the tag or the tag has no translation in the import locale, and is not deleted when one source marks it deleted. Its type is set only when it has none; a different type is kept and logged as `Tag type conflict during import`. The slug a source sends is slugged before the lookup and stored that way, so `Unione_Europea` meets `unione-europea`. Two imports creating the same tag at once leave one: the unique key refuses the second, whose savepoint is rolled back, and the import uses the tag the other one created. The CSV tag import uses the same identity.
+
 ## Position of categories and tags
 
 `ImportCategoryDto::$orderColumn` and `ImportTagDto::$orderColumn` are nullable. A number is the record's position in the source: the upserter writes it, also when it creates the record (`keepPositionWhenCreating()`). Null means the source has no order of its own: an existing record keeps the position an editor gave it, and a new one goes last. The CSV category importer carries no position and behaves as null. Naxos sends a position for sections, event categories and folders when the payload has `order`; Naxos tags, feed and Spaceflight send null.
