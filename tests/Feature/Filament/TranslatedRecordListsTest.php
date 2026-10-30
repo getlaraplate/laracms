@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\HtmlString;
 use Livewire\Livewire;
 use Modules\CMS\Filament\Resources\Tags\Pages\ListTags;
 use Modules\CMS\Models\Tag;
@@ -33,9 +34,12 @@ it('shows the default text, marked with its locale, where the content locale has
         ->loadTable()
         ->assertCanSeeTableRecords([$this->untranslated, $this->translated])
         ->assertTableColumnStateSet('name', 'Only English', $this->untranslated)
-        ->assertTableColumnHasDescription('name', __('app.tables.shownInLocale', ['locale' => 'EN']), $this->untranslated)
+        ->assertTableColumnFormattedStateSet('name', new HtmlString(
+            'Only English <span class="fi-ta-text-description" title="' . e(__('app.tables.shownInLocale', ['locale' => 'EN'])) . '">(EN)</span>',
+        ), $this->untranslated)
+        ->assertTableColumnDoesNotHaveDescription('name', __('app.tables.shownInLocale', ['locale' => 'EN']), $this->untranslated)
         ->assertTableColumnStateSet('name', 'Deutsch', $this->translated)
-        ->assertTableColumnDoesNotHaveDescription('name', __('app.tables.shownInLocale', ['locale' => 'EN']), $this->translated);
+        ->assertTableColumnFormattedStateSet('name', 'Deutsch', $this->translated);
 });
 
 it('filters the records with no translation in the content locale', function (): void {
