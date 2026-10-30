@@ -11,6 +11,8 @@ use Modules\CMS\Models\Pivot\Presettable;
 use Modules\CMS\Models\Preset;
 use Modules\CMS\Models\Translations\ContentTranslation;
 use Modules\CMS\Tests\TestCase;
+use Modules\Core\Search\DTOs\VectorProfile;
+use Modules\Core\Tests\Support\FakeVectorProfile;
 
 uses(TestCase::class, RefreshDatabase::class);
 
@@ -90,6 +92,7 @@ it('indexes an Editor.js component as its plain text, whatever blocks it holds',
 });
 
 it('declares the Content search mapping with locale-keyed title/slug objects, a locales field, and the nested embeddings vector', function (): void {
+    FakeVectorProfile::use(new VectorProfile('a:one', 1024, 'dot_product'));
     $content = createBilingualSearchableContent('Titolo di prova', 'Test title');
 
     // Force the Elasticsearch translator so the mapping shape can be asserted without
@@ -107,10 +110,20 @@ it('declares the Content search mapping with locale-keyed title/slug objects, a 
         ->and($properties['slug']['type'])->toBe('object')
         ->and($properties['locales']['type'])->toBe('keyword')
         ->and($properties['embeddings']['type'])->toBe('nested')
-        ->and($properties['embeddings']['properties']['vector']['type'])->toBe('dense_vector')
+        ->and($properties['embeddings']['properties']['vector'])->toMatchArray(['type' => 'dense_vector', 'dims' => 1024, 'similarity' => 'dot_product'])
         ->and($properties)->not->toHaveKey('title_it')
         ->and($properties)->not->toHaveKey('title_en')
         ->and($properties)->not->toHaveKey('slug_it')
         ->and($properties)->not->toHaveKey('slug_en')
         ->and($properties)->not->toHaveKey('embedding');
+});
+
+it('declares the Content embeddings field without a nested vector when there is no vector profile', function (): void {
+    FakeVectorProfile::none();
+    $content = createBilingualSearchableContent('Titolo di prova', 'Test title');
+    config(['scout.driver' => 'elasticsearch']);
+
+    $properties = $content->getSearchMapping()['mappings']['properties'];
+
+    expect($properties['embeddings'])->not->toHaveKey('properties');
 });

@@ -19,6 +19,7 @@ use Modules\Core\Models\Permission;
 use Modules\Core\Models\Role;
 use Modules\Core\Support\CrudApiExposure;
 use Modules\Core\Support\PermissionName;
+use Modules\Core\Tests\Support\FakeVectorProfile;
 
 uses(TestCase::class, RefreshDatabase::class);
 
@@ -32,7 +33,7 @@ uses(TestCase::class, RefreshDatabase::class);
 beforeEach(function (): void {
     Cache::flush();
     Carbon::setTestNow('2026-10-09 12:00:00');
-    config()->set('core.search.vector.enabled', false);
+    FakeVectorProfile::none();
     CrudApiExposure::enable();
     setupCMSEntities([EntityType::Contents, EntityType::Contributors]);
 

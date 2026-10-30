@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
@@ -18,6 +17,7 @@ use Modules\CMS\Models\Translations\ContentTranslation;
 use Modules\CMS\Tests\TestCase;
 use Modules\Core\Events\ModelRequiresIndexing;
 use Modules\Core\Events\TranslationRequiresReembedding;
+use Modules\Core\Tests\Support\FakeVectorProfile;
 
 uses(TestCase::class, RefreshDatabase::class);
 
@@ -33,12 +33,12 @@ uses(TestCase::class, RefreshDatabase::class);
 // LocationObserverTest's convention.
 //
 // The observer only dispatches when Content::isEmbeddable() is true, which
-// requires core.search.vector.enabled (off by default, mirroring
-// HandleModelIndexingListenerTest's own setup) — enable it here so the
+// requires a vector profile (none by default, mirroring
+// HandleModelIndexingListenerTest's own setup) — pin one here so the
 // saved()-path tests exercise real behavior instead of the disabled no-op.
 beforeEach(function (): void {
     Queue::fake();
-    Config::set('core.search.vector.enabled', true);
+    FakeVectorProfile::use();
 });
 
 /**
@@ -196,7 +196,7 @@ it('does not dispatch TranslationRequiresReembedding when only a non-embeddable 
 it('does not dispatch TranslationRequiresReembedding when vector search is disabled, even on a title change', function (): void {
     $content = createReembedTestContent('Titolo di prova', 'Test title');
 
-    Config::set('core.search.vector.enabled', false);
+    FakeVectorProfile::none();
     Event::fake([TranslationRequiresReembedding::class]);
 
     $content->translations()->where('locale', 'it')->first()->update(['title' => 'Titolo aggiornato']);
@@ -206,7 +206,7 @@ it('does not dispatch TranslationRequiresReembedding when vector search is disab
 
 it('reads no content on a translation save when vector search is disabled', function (): void {
     $content = createReembedTestContent('Titolo di prova', 'Test title');
-    Config::set('core.search.vector.enabled', false);
+    FakeVectorProfile::none();
     $translation = $content->translations()->where('locale', 'it')->firstOrFail();
     $reads = [];
     DB::listen(static function ($query) use (&$reads): void {

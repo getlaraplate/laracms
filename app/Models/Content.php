@@ -52,9 +52,11 @@ use Modules\Core\Models\Concerns\SortableTrait;
 use Modules\Core\Models\RecordOrigin;
 use Modules\Core\Overrides\Model;
 use Modules\Core\Search\Contracts\IProvidesRerankerText;
+use Modules\Core\Search\DTOs\VectorProfile;
 use Modules\Core\Search\Schema\FieldDefinition;
 use Modules\Core\Search\Schema\FieldType;
 use Modules\Core\Search\Schema\IndexType;
+use Modules\Core\Search\Support\VectorProfileContext;
 use Modules\Core\Search\Traits\Searchable;
 use Modules\Core\Services\Crud\DTOs\FacetLabelSource;
 use Override;
@@ -545,9 +547,10 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, ILo
         $schema->addField(new FieldDefinition('title', FieldType::Object, [IndexType::Searchable, IndexType::Fuzzy], ['locale_properties' => $localeText]));
         $schema->addField(new FieldDefinition('slug', FieldType::Object, [IndexType::Searchable], ['locale_properties' => $localeKeyword]));
         $schema->addField(new FieldDefinition('locales', FieldType::Keyword, [IndexType::Searchable, IndexType::Filterable, IndexType::Facetable]));
-        $schema->addField(new FieldDefinition('embeddings', FieldType::Array, [IndexType::Searchable, IndexType::Vector], [
-            'vector' => ['dimensions' => (int) config('core.search.vector.dimensions', 384), 'similarity' => config('core.search.vector.similarity', 'cosine')],
-        ]));
+        $profile = VectorProfileContext::get();
+        $schema->addField(new FieldDefinition('embeddings', FieldType::Array, [IndexType::Searchable, IndexType::Vector], $profile instanceof VectorProfile
+            ? ['vector' => ['dimensions' => $profile->dimensions, 'similarity' => $profile->similarity]]
+            : []));
 
         // Add base component fields, locale-keyed like title
         foreach ($component_fields as $field) {

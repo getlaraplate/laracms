@@ -13,6 +13,7 @@ use Modules\Core\Models\Role;
 use Modules\Core\Models\User;
 use Modules\Core\Support\CrudApiExposure;
 use Modules\Core\Support\PermissionName;
+use Modules\Core\Tests\Support\FakeVectorProfile;
 
 uses(TestCase::class, RefreshDatabase::class);
 
@@ -20,7 +21,7 @@ uses(TestCase::class, RefreshDatabase::class);
 
 beforeEach(function (): void {
     Cache::flush();
-    config()->set('core.search.vector.enabled', false);
+    FakeVectorProfile::none();
     CrudApiExposure::enable();
     setupCMSEntities([EntityType::Contents]);
 });
