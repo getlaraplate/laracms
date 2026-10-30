@@ -490,3 +490,39 @@ it('finds from string of any type when no type is given', function (): void {
     expect(Tag::findFromString('Jazz')?->id)->toBe($tag->id)
         ->and(Tag::findFromString('Jazz', 'era'))->toBeNull();
 });
+
+it('rejects through the model rules a translation slug already taken in its locale', function (): void {
+    $locale = Modules\Core\Helpers\LocaleContext::getDefault();
+    Tag::findOrCreateFromString('Jazz');
+
+    $validator = Illuminate\Support\Facades\Validator::make(
+        ['translations' => [['locale' => $locale, 'name' => 'Jazz', 'slug' => 'jazz']]],
+        (new Tag)->getRules()['create'],
+    );
+
+    expect($validator->errors()->keys())->toContain('translations.0.slug');
+});
+
+it('rejects through the model rules a name whose slug is already taken, when no slug is given', function (): void {
+    $locale = Modules\Core\Helpers\LocaleContext::getDefault();
+    Tag::findOrCreateFromString('Jazz');
+
+    $validator = Illuminate\Support\Facades\Validator::make(
+        ['translations' => [['locale' => $locale, 'name' => 'JAZZ']]],
+        (new Tag)->getRules()['create'],
+    );
+
+    expect($validator->errors()->keys())->toContain('translations.0.name');
+});
+
+it('accepts through the model rules the slug of the tag being updated', function (): void {
+    $locale = Modules\Core\Helpers\LocaleContext::getDefault();
+    $tag = Tag::findOrCreateFromString('Jazz');
+
+    $validator = Illuminate\Support\Facades\Validator::make(
+        ['translations' => [['locale' => $locale, 'name' => 'Jazz!', 'slug' => 'jazz']]],
+        $tag->getRules()['update'],
+    );
+
+    expect($validator->errors()->keys())->not->toContain('translations.0.slug');
+});
