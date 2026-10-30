@@ -103,3 +103,54 @@ test('the category importer keeps the position of a category it imports again', 
     expect($again->fresh()->updated_rows)->toBe(1)
         ->and($news->fresh()->order_column)->toBe(9);
 });
+
+test('the tag importer reuses by slug a tag of no type and gives it the row type', function (): void {
+    $sport = Tag::findOrCreateFromString('Sport');
+
+    $session = cmsImportSession('cms.tag', "name,type\nsport,topic\n", ['name' => 'name', 'type' => 'type']);
+    app(ImportRunner::class)->process($session);
+
+    expect($session->fresh()->updated_rows)->toBe(1)
+        ->and(Tag::query()->count())->toBe(1)
+        ->and($sport->fresh()->type)->toBe('topic');
+});
+
+test('the tag importer reuses by slug a tag of another type and keeps its type', function (): void {
+    $sport = Tag::findOrCreateFromString('Sport', 'section');
+
+    $session = cmsImportSession('cms.tag', "name,type\nSport,topic\n", ['name' => 'name', 'type' => 'type']);
+    app(ImportRunner::class)->process($session);
+
+    expect($session->fresh()->updated_rows)->toBe(1)
+        ->and(Tag::query()->count())->toBe(1)
+        ->and($sport->fresh()->type)->toBe('section');
+});
+
+test('the tag importer does not rename a tag another source brought', function (): void {
+    $tag_id = resolve(Modules\CMS\Import\Upserters\TagUpserter::class)->upsert(new Modules\CMS\Import\Dto\ImportTagDto(
+        externalId: 117,
+        name: 'Libri',
+        slug: 'libri',
+        type: null,
+        orderColumn: null,
+        createdAt: null,
+        updatedAt: null,
+        deletedAt: null,
+        sourceType: 'naxos_api@a',
+    ));
+
+    app(ImportRunner::class)->process(cmsImportSession('cms.tag', "name\nlibri\n", ['name' => 'name']));
+
+    expect(Tag::query()->count())->toBe(1)
+        ->and(Tag::query()->findOrFail($tag_id)->getTranslation('en')?->name)->toBe('Libri');
+});
+
+test('the tag importer stores the slug a row gives as a slug and finds it again', function (): void {
+    app(ImportRunner::class)->process(cmsImportSession('cms.tag', "name,slug\nJazz,Jazz Music\n", ['name' => 'name', 'slug' => 'slug']));
+    $again = cmsImportSession('cms.tag', "name,slug\nJazz,Jazz Music\n", ['name' => 'name', 'slug' => 'slug']);
+    app(ImportRunner::class)->process($again);
+
+    expect($again->fresh()->updated_rows)->toBe(1)
+        ->and(Tag::query()->count())->toBe(1)
+        ->and(Modules\CMS\Models\Translations\TagTranslation::query()->value('slug'))->toBe('jazz-music');
+});

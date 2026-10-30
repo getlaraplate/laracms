@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Modules\CMS\Import;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Modules\CMS\Import\Support\ExternalReferenceLocator;
 use Modules\CMS\Models\Tag;
+use Modules\CMS\Models\Translations\TagTranslation;
 use Modules\Core\Helpers\LocaleContext;
 use Modules\Core\Import\Contracts\EntityImporterInterface;
 use Modules\Core\Import\Enums\ImportRowOutcome;
@@ -17,14 +20,18 @@ use Modules\Core\Import\ValueObjects\ImportField;
 use Override;
 
 /**
- * Bulk-imports CMS tags. A tag's name lives in a per-locale translation, so a row
- * is matched (and deduped) by its translated name within its `type`, and the name
- * is written into the import locale. Re-importing the same tag updates its name
- * rather than creating a duplicate.
+ * Bulk-imports CMS tags. A tag is one per locale and slug, so a row is matched by the
+ * slug it gives, or the slug of its name, in the import locale, whatever its `type`;
+ * a trashed match is restored. The row's type is given to a tag that has none. The
+ * name is written into the import locale unless another source also brought the tag,
+ * which then keeps its name.
  */
 final readonly class TagImporter implements EntityImporterInterface
 {
-    public function __construct(private RecordOriginRegistry $origins) {}
+    public function __construct(
+        private RecordOriginRegistry $origins,
+        private ExternalReferenceLocator $locator,
+    ) {}
 
     #[Override]
     public function key(): string
@@ -59,7 +66,7 @@ final readonly class TagImporter implements EntityImporterInterface
     {
         $name = mb_trim($row['name'] ?? '');
         $type = mb_trim($row['type'] ?? '') ?: null;
-        $slug = mb_trim($row['slug'] ?? '');
+        $slug = TagTranslation::slugFromName($row['slug'] ?? '');
 
         $validator = Validator::make(['name' => $name], ['name' => ['required', 'string', 'max:255']]);
 
@@ -67,16 +74,35 @@ final readonly class TagImporter implements EntityImporterInterface
             throw RowImportException::withErrors($validator->errors()->messages());
         }
 
-        $existing = Tag::findFromString($name, $type);
+        $existing = Tag::findByIdentity($slug !== '' ? $slug : $name, $this->locale());
         $tag = $existing ?? Tag::query()->create(['type' => $type]);
 
-        $translation = ['name' => $name];
+        if ($existing instanceof Tag) {
+            if ($existing->trashed()) {
+                $existing->restore();
+            }
 
-        if ($slug !== '') {
-            $translation['slug'] = $slug;
+            if (! $existing->adoptType($type)) {
+                Log::warning('Tag type conflict during import', [
+                    'tag_id' => $existing->id,
+                    'tag_type' => $existing->type,
+                    'source_type' => Tag::normalizeType($type),
+                    'source' => $context->sourceKey(),
+                ]);
+            }
+
+            $existing->save();
         }
 
-        $tag->setTranslation($this->locale(), $translation);
+        if (! $existing instanceof Tag || ! $existing->hasTranslation($this->locale()) || ! $this->locator->hasOriginFromAnotherSource($existing, $context->sourceKey())) {
+            $translation = ['name' => $name];
+
+            if ($slug !== '') {
+                $translation['slug'] = $slug;
+            }
+
+            $tag->setTranslation($this->locale(), $translation);
+        }
 
         $this->origins->register(
             $tag,

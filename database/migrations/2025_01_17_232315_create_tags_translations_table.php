@@ -29,8 +29,10 @@ return new class extends Migration
             );
 
             $table->unique(['tag_id', 'locale'], "{$table_name}_tag_locale_UN");
-            $table->index(['locale', 'slug'], "{$table_name}_locale_slug_IDX");
         });
+
+        // One live tag per locale and slug, whatever source or editor writes it.
+        MigrateUtils::liveUniqueIndex($table_name, ['locale', 'slug'], "{$table_name}_locale_slug_UN");
 
         MigrateUtils::fuzzyIndex($table_name, 'name');
     }

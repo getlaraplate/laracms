@@ -15,6 +15,13 @@ use Modules\Core\Overrides\Model;
 use Modules\Core\Services\Translation\Definitions\ITranslated;
 use Override;
 
+/**
+ * @property int $id
+ * @property int $tag_id
+ * @property string $locale
+ * @property string $name
+ * @property string $slug
+ */
 final class TagTranslation extends Model implements IsPartOfParent, ITranslated
 {
     use HasSlug;
@@ -37,6 +44,18 @@ final class TagTranslation extends Model implements IsPartOfParent, ITranslated
         'name',
         'slug',
     ];
+
+    /**
+     * The slug a tag named `$name` gets: the one `generateSlug()` gives a translation with that name, so a lookup
+     * by name meets the slug the translation was saved with ("Web 2.0" is `web-2-0`).
+     */
+    public static function slugFromName(string $name): string
+    {
+        $name = mb_trim($name);
+
+        // generateSlug() keeps the placeholder of an empty value, which would turn no name into the slug "name".
+        return $name === '' ? '' : (new self(['name' => $name]))->generateSlug();
+    }
 
     /**
      * The relation to the record this one only exists inside, whose visibility it inherits.

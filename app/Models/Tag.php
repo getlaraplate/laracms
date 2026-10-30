@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Modules\CMS\Models;
 
 use ArrayAccess;
+use Closure;
+use Illuminate\Contracts\Validation\DataAwareRule;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -21,6 +24,7 @@ use Modules\Core\Helpers\LocaleContext;
 use Modules\Core\Models\Concerns\HasPath;
 use Modules\Core\Models\Concerns\HasTranslations;
 use Modules\Core\Models\Concerns\SortableTrait;
+use Modules\Core\Overrides\LocaleScope;
 use Modules\Core\Overrides\Model;
 use Override;
 use Spatie\EloquentSortable\Sortable;
@@ -104,16 +108,50 @@ final class Tag extends Model implements Sortable
         return self::query()->withType($type)->get();
     }
 
+    /**
+     * The tag a name identifies: the one, trashed included, whose live translation in `$locale` (the default
+     * locale when null) has the slug of that name. A tag is one per locale and slug, whatever its type.
+     */
+    public static function findByIdentity(string $name, ?string $locale = null): ?self
+    {
+        $tag_id = TagTranslation::query()
+            ->where('locale', $locale ?? LocaleContext::getDefault())
+            ->where('slug', TagTranslation::slugFromName($name))
+            ->value('tag_id');
+
+        if ($tag_id === null) {
+            return null;
+        }
+
+        return self::withTrashed()->withoutGlobalScope(LocaleScope::class)->whereKey($tag_id)->first();
+    }
+
+    /**
+     * Whether another tag already has a live translation with `$slug` in `$locale`.
+     */
+    public static function slugTakenInLocale(string $slug, string $locale, ?int $except_tag_id = null): bool
+    {
+        return TagTranslation::query()
+            ->where('locale', $locale)
+            ->where('slug', $slug)
+            ->when($except_tag_id !== null, static fn (Builder $query): Builder => $query->where('tag_id', '!=', $except_tag_id))
+            ->exists();
+    }
+
+    /**
+     * The tag a name identifies, not trashed; with a type, only if the tag has that type. No type means any type.
+     */
     public static function findFromString(string $name, ?string $type = null): ?self
     {
-        return self::query()
-            ->where('type', self::normalizeType($type))
-            ->whereHas('translations', static function (Builder $query) use ($name): void {
-                /** @var Builder<TagTranslation> $query */
-                $query->where('name', $name)
-                    ->orWhere('slug', $name);
-            })
-            ->first();
+        $tag = self::findByIdentity($name);
+
+        if (! $tag instanceof self || $tag->trashed()) {
+            return null;
+        }
+
+        $type = self::normalizeType($type);
+
+        return $type === null || $tag->type === $type ? $tag : null;
     }
 
     /**
@@ -130,22 +168,36 @@ final class Tag extends Model implements Sortable
             ->get();
     }
 
+    /**
+     * The tag a name identifies, restored if trashed and given `$type` if it has none; created when there is none.
+     *
+     * @throws InvalidArgumentException When the tag has a type other than `$type`
+     */
     public static function findOrCreateFromString(string $name, ?string $type = null): self
     {
-        $tag = self::findFromString($name, $type);
+        $tag = self::findByIdentity($name);
 
-        if (! $tag instanceof self) {
-            $tag = self::query()->create([
-                'type' => $type,
-            ]);
-            // Set name in default locale translation
-            $locale = LocaleContext::getDefault();
-            $tag->setTranslation($locale, [
-                'name' => $name,
-            ]);
+        if ($tag instanceof self) {
+            if ($tag->trashed()) {
+                $tag->restore();
+            }
+
+            throw_unless($tag->adoptType($type), InvalidArgumentException::class, sprintf('Tag %s has type %s, not %s', $name, $tag->type, self::normalizeType($type)));
+
+            if ($tag->isDirty('type')) {
+                $tag->save();
+            }
 
             return $tag;
         }
+
+        $tag = self::query()->create([
+            'type' => $type,
+        ]);
+        // Set name in default locale translation
+        $tag->setTranslation(LocaleContext::getDefault(), [
+            'name' => $name,
+        ]);
 
         return $tag;
     }
@@ -178,6 +230,27 @@ final class Tag extends Model implements Sortable
     }
 
     /**
+     * Gives this tag `$type` when it has none, without saving. False when it already has another type, which it
+     * keeps: the type is one per tag, never translated.
+     */
+    public function adoptType(?string $type): bool
+    {
+        $type = self::normalizeType($type);
+
+        if ($type === null || $this->type === $type) {
+            return true;
+        }
+
+        if ($this->type === null) {
+            $this->type = $type;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Contents that reference this tag via the taggables morph pivot.
      *
      * @return MorphToMany<Content, $this>
@@ -200,16 +273,16 @@ final class Tag extends Model implements Sortable
             // 'slug' => 'sometimes|nullable|string|max:255', // Validated in translation
             'translations' => 'sometimes|array',
             'translations.*.locale' => 'required|string|max:10',
-            'translations.*.name' => 'required|string|max:255',
-            'translations.*.slug' => 'sometimes|nullable|string|max:255',
+            'translations.*.slug' => ['sometimes', 'nullable', 'string', 'max:255', self::freeSlugRule('slug')],
+            'translations.*.name' => ['required', 'string', 'max:255', self::freeSlugRule('name')],
         ]);
         $rules['update'] = array_merge($rules['update'], [
             // 'name' => 'sometimes|required|string|max:255', // Validated in translation
             // 'slug' => 'sometimes|nullable|string|max:255', // Validated in translation
             'translations' => 'sometimes|array',
             'translations.*.locale' => 'required|string|max:10',
-            'translations.*.name' => 'sometimes|required|string|max:255',
-            'translations.*.slug' => 'sometimes|nullable|string|max:255',
+            'translations.*.slug' => ['sometimes', 'nullable', 'string', 'max:255', self::freeSlugRule('slug', $this->id)],
+            'translations.*.name' => ['sometimes', 'required', 'string', 'max:255', self::freeSlugRule('name', $this->id)],
         ]);
 
         return $rules;
@@ -305,6 +378,55 @@ final class Tag extends Model implements Sortable
     protected function slugPlaceholders(): array
     {
         return [...array_map(fn (string $field): string => '{' . $field . '}', $this->dynamicSlugFields()), '{name}'];
+    }
+
+    /**
+     * A rule that fails on `$field` when another tag already has, in the translation item's locale, the item's
+     * slug, given or generated from its name. The name is checked only when the item carries no slug, so one
+     * collision is reported once. A plain rule object, because the CRUD request normalizes rules as arrays.
+     */
+    private static function freeSlugRule(string $field, ?int $except_tag_id = null): ValidationRule
+    {
+        return new class($field, $except_tag_id) implements DataAwareRule, ValidationRule
+        {
+            /**
+             * @var array<string, mixed>
+             */
+            private array $data = [];
+
+            public function __construct(private readonly string $field, private readonly ?int $except_tag_id) {}
+
+            /**
+             * @param  array<string, mixed>  $data
+             */
+            public function setData(array $data): static
+            {
+                $this->data = $data;
+
+                return $this;
+            }
+
+            public function validate(string $attribute, mixed $value, Closure $fail): void
+            {
+                $item_path = Str::beforeLast($attribute, '.');
+                $locale = data_get($this->data, $item_path . '.locale');
+                $given_slug = data_get($this->data, $item_path . '.slug');
+
+                if (! is_string($locale) || ! is_string($value) || $value === '') {
+                    return;
+                }
+
+                if ($this->field === 'name' && is_string($given_slug) && $given_slug !== '') {
+                    return;
+                }
+
+                $slug = $this->field === 'slug' ? $value : TagTranslation::slugFromName($value);
+
+                if (Tag::slugTakenInLocale($slug, $locale, $this->except_tag_id)) {
+                    $fail(__('validation.unique', ['attribute' => $this->field]));
+                }
+            }
+        };
     }
 
     /**

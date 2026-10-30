@@ -17,6 +17,7 @@ use Modules\CMS\Models\Translations\ContributorTranslation;
 use Modules\CMS\Models\Translations\TagTranslation;
 use Modules\Core\Import\Support\RecordOriginRegistry;
 use Modules\Core\Import\ValueObjects\ExternalRecordIdentity;
+use Modules\Core\Models\RecordOrigin;
 use Modules\Core\Models\Translations\TaxonomyTranslation;
 use Throwable;
 
@@ -106,6 +107,19 @@ final class ExternalReferenceLocator
             $target_model,
             $context,
         ) !== null;
+    }
+
+    /**
+     * Whether a source other than `$source_key` brought this record too: a record shared by several sources is
+     * not renamed or deleted by any one of them.
+     */
+    public function hasOriginFromAnotherSource(Model $referable, string $source_key): bool
+    {
+        return $referable->getConnection()->table((new RecordOrigin)->getTable())
+            ->where('referable_type', $referable->getMorphClass())
+            ->where('referable_id', $referable->getKey())
+            ->where('source_key', '!=', $source_key)
+            ->exists();
     }
 
     /**
