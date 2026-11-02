@@ -127,3 +127,7 @@ it('declares the Content embeddings field without a nested vector when there is 
 
     expect($properties['embeddings'])->not->toHaveKey('properties');
 });
+
+it('declares valid_from as the date a search period is applied to', function (): void {
+    expect(new Content()->searchDateField())->toBe('valid_from');
+});

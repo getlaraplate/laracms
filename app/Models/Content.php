@@ -133,6 +133,11 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, ILo
     protected array $embed = ['title', 'textual_only'];
 
     /**
+     * The date a content is found by when a search names a period: the start of its validity.
+     */
+    protected ?string $searchDateField = 'valid_from';
+
+    /**
      * @var array<string, mixed>
      */
     protected array $sortable = [
