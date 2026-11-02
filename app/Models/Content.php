@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\CMS\Models;
 
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
@@ -101,6 +102,11 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, ILo
      * Characters of a content's text handed to a reranker: its model reads a few hundred tokens at most.
      */
     private const int RERANKER_TEXT_LIMIT = 2000;
+
+    /**
+     * Characters of the context line every embedded chunk of a content starts with.
+     */
+    private const int EMBED_HEADER_LIMIT = 300;
 
     /**
      * @var string
@@ -350,6 +356,36 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, ILo
         }
 
         return $relation;
+    }
+
+    /**
+     * The context line every embedded chunk of a content starts with: its type, its title in the locale
+     * being embedded and the date it is valid from, joined by " | " on one line of at most
+     * {@see self::EMBED_HEADER_LIMIT} characters. It reads the presettable eager-loaded with every content and
+     * the translations (eager-loaded by the bulk and switch paths, loaded once per content otherwise), so it
+     * fires no query per chunk or per locale and gives the same header, hence the same content hash, on every
+     * path. Categories, tags and contributors
+     * are left out: they are loaded on the bulk indexing path only, and a header that depended on them
+     * would change, and re-embed the content, each time the other path ran.
+     */
+    public function embedHeader(?string $locale = null): ?string
+    {
+        $translation = $this->findContentTranslation($locale ?? LocaleContext::getDefault());
+        $valid_from = $this->getAttribute(self::$valid_from_column);
+
+        $parts = array_filter([
+            $this->type,
+            $translation?->title,
+            $valid_from instanceof DateTimeInterface ? $valid_from->format('Y-m-d') : null,
+        ], static fn (mixed $part): bool => is_string($part) && mb_trim($part) !== '');
+
+        if ($parts === []) {
+            return null;
+        }
+
+        $header = (string) preg_replace('/\s+/u', ' ', implode(' | ', $parts));
+
+        return mb_trim(mb_substr(mb_trim($header), 0, self::EMBED_HEADER_LIMIT));
     }
 
     /**
