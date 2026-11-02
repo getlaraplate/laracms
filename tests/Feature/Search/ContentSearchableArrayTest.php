@@ -104,8 +104,8 @@ it('declares the Content search mapping with locale-keyed title/slug objects, a 
     $properties = $mapping['mappings']['properties'];
 
     expect($properties['title']['type'])->toBe('object')
-        ->and($properties['title']['properties']['it'])->toBe(['type' => 'text', 'analyzer' => 'italian'])
-        ->and($properties['title']['properties']['en'])->toBe(['type' => 'text', 'analyzer' => 'english'])
+        ->and($properties['title']['properties']['it'])->toBe(['type' => 'text', 'analyzer' => 'italian', 'fields' => ['exact' => ['type' => 'text', 'analyzer' => 'standard']]])
+        ->and($properties['title']['properties']['en'])->toBe(['type' => 'text', 'analyzer' => 'english', 'fields' => ['exact' => ['type' => 'text', 'analyzer' => 'standard']]])
         ->and($properties['title']['properties']['de'])->toBe(['type' => 'text', 'analyzer' => 'standard'])
         ->and($properties['slug']['type'])->toBe('object')
         ->and($properties['locales']['type'])->toBe('keyword')
@@ -126,4 +126,8 @@ it('declares the Content embeddings field without a nested vector when there is 
     $properties = $content->getSearchMapping()['mappings']['properties'];
 
     expect($properties['embeddings'])->not->toHaveKey('properties');
+});
+
+it('declares valid_from as the date a search period is applied to', function (): void {
+    expect(new Content()->searchDateField())->toBe('valid_from');
 });
