@@ -75,6 +75,28 @@ it('returns filament tabs with badges when multiple content entities exist and c
         ->and($tabs)->toHaveKey('all');
 });
 
+it('shows a tab for each entity holding contents, with its own count and the total on the all tab', function (): void {
+    setupCMSEntities([EntityType::Contents]);
+
+    $primary = Entity::query()->where('name', 'contents')->where('type', EntityType::Contents)->firstOrFail();
+    $contents = Content::factory()->count(3)->create();
+
+    $secondary = createSecondContentsEntityWithPreset();
+
+    if (class_exists(Modules\Core\Services\DynamicContentsService::class)) {
+        Modules\Core\Services\DynamicContentsService::reset();
+    }
+
+    Content::query()->withoutGlobalScopes()->whereKey($contents->last()->id)->update(['entity_id' => $secondary->id]);
+
+    $tabs = (new CMSHasRecordsTraitHarness)->getTabs();
+
+    expect($tabs)->toHaveKeys(['all', $primary->name, $secondary->name])
+        ->and((int) $tabs['all']->getBadge())->toBe(3)
+        ->and((int) $tabs[$primary->name]->getBadge())->toBe(2)
+        ->and((int) $tabs[$secondary->name]->getBadge())->toBe(1);
+});
+
 it('returns an empty tab list when fewer than two entities are available', function (): void {
     setupCMSEntities([EntityType::Contents]);
 
