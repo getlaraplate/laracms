@@ -105,7 +105,7 @@ trait HasRecords
             $counts_by_entity[(int) $entity_id] = (int) $count;
         }
 
-        return array_merge(['all' => array_sum($counts_by_entity)], $counts_by_entity);
+        return ['all' => array_sum($counts_by_entity)] + $counts_by_entity;
     }
 
     private function tabsCountsTtl(): int
