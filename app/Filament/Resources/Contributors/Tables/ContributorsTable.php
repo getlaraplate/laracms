@@ -8,6 +8,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Modules\CMS\Filament\Utils\HasTable;
 use Modules\CMS\Models\Contributor;
@@ -37,9 +38,22 @@ final class ContributorsTable
                         ->toggleable(isToggledHiddenByDefault: true)
                         ->grow(false)
                         ->width(100),
-                    ImageColumn::make('user.cover')
+                    TextColumn::make('name')
+                        ->searchable()
+                        ->sortable()
+                        ->grow(true),
+                    TextColumn::make('components.email')
+                        ->label(__('app.fields.email'))
+                        ->searchable()
+                        ->sortable()
+                        ->toggleable()
+                        ->grow(true),
+                    ImageColumn::make('cover')
                         ->label(__('cms.fields.avatar'))
+                        ->state(static fn (Contributor $record): ?string => $record->getFirstMedia('cover')?->getUrl('thumb-low'))
                         ->circular()
+                        ->imageSize('2rem')
+                        ->extraAttributes(['style' => 'padding-block: 0.625rem'])
                         ->toggleable(isToggledHiddenByDefault: false)
                         ->grow(false)
                         ->defaultImageUrl(static function (Contributor $record): string {
@@ -97,19 +111,10 @@ final class ContributorsTable
                             ));
                         })
                         ->extraImgAttributes(['loading' => 'lazy']),
-                    TextColumn::make('name')
-                        ->searchable()
-                        ->sortable()
-                        ->grow(true),
-                    TextColumn::make('components.email')
-                        ->label(__('app.fields.email'))
-                        ->searchable()
-                        ->sortable()
-                        ->toggleable()
-                        ->grow(true),
                 ]);
             },
         )
+            ->modifyQueryUsing(static fn (Builder $query): Builder => $query->with('media'))
             ->defaultSort('name');
     }
 }
