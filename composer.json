@@ -20,7 +20,7 @@
     "php": ">=8.5",
     "ext-gd": "*",
     "ext-exif": "*",
-    "laravel/framework": "^12.0",
+    "laravel/framework": "^13.0",
     "php-ffmpeg/php-ffmpeg": "^1.4"
   },
   "suggest": {
