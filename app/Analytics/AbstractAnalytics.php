@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\CMS\Analytics;
 
 use Elastic\Elasticsearch\Client;
-use Elastic\Elasticsearch\ClientBuilder;
 use Elastic\Elasticsearch\Response\Elasticsearch as ElasticsearchResponse;
 use Exception;
 use Http\Promise\Promise;
@@ -13,7 +12,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Log;
-use InvalidArgumentException;
 use JsonException;
 use RuntimeException;
 
@@ -24,13 +22,7 @@ abstract class AbstractAnalytics
      */
     protected function getElasticsearchClient(): Client
     {
-        $config = config('elastic.client.connections.default');
-
-        if (! is_array($config)) {
-            throw new InvalidArgumentException('Elasticsearch client config must be an array.');
-        }
-
-        return ClientBuilder::fromConfig($config);
+        return resolve(Client::class);
     }
 
     /**
