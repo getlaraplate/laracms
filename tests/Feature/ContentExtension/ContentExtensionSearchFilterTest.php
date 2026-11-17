@@ -10,6 +10,7 @@ use Modules\CMS\Models\Content;
 use Modules\CMS\Services\ContentExtenderRegistry;
 use Modules\CMS\Tests\Stubs\ContentExtension\StubExtendedThing;
 use Modules\CMS\Tests\TestCase;
+use Modules\Core\Search\Support\DefaultSearchFilters;
 
 uses(TestCase::class, RefreshDatabase::class);
 
@@ -38,8 +39,10 @@ beforeEach(function (): void {
     app(ContentExtenderRegistry::class)->register('cms.stub_extended', StubExtendedThing::class);
 });
 
-it('declares the generic-search default filter that excludes extended contents', function (): void {
-    expect((new Content())->defaultSearchFilters())->toBe(['extended_type' => null]);
+it('excludes extended contents from the generic search through the host contract', function (): void {
+    // Content declares no default search filter for it: the exclusion comes from the Core host contract
+    // (spec 2026-11-17-extended-entity-search-design.md, XS11).
+    expect(DefaultSearchFilters::of(new Content()))->toBe(['extended_type' => null]);
 });
 
 it('compiles the extended_type filter to IS NULL on the database engine', function (): void {

@@ -5,38 +5,43 @@ declare(strict_types=1);
 namespace Modules\CMS\Services;
 
 use InvalidArgumentException;
-use Modules\CMS\Contracts\ExtendsContent;
+use Modules\CMS\Models\Content;
+use Modules\Core\Search\Extensions\ExtensionRegistry;
 
 /**
- * In-memory registry mapping a content-extension alias to its extender class.
+ * The extenders of {@see Content}, by alias: a delegate over the Core {@see ExtensionRegistry} under the host
+ * `Content`. The container binds one shared instance over the Core singleton, so an extender registered here is the
+ * one `Content` reads; `new ContentExtenderRegistry()` is an isolated registry with nothing in it.
  *
- * Populated at boot by each extender module's service provider — never seeded from a table and never
- * keyed by entity id (which differs per install and does not exist on a fresh app). It holds only
- * content extenders, unlike Laravel's global morph map. On an install with no extender registered it
- * is empty and every extension code path is a no-op.
+ * @deprecated Register in the Core {@see ExtensionRegistry} for `Content::class`. Kept while extenders still register
+ *             through it (spec 2026-11-17-extended-entity-search-design.md, XS13; plan task 7 moves Shop).
  */
-final class ContentExtenderRegistry
+final readonly class ContentExtenderRegistry
 {
-    /**
-     * @var array<string, class-string<ExtendsContent>>
-     */
-    private array $extenders = [];
+    private ExtensionRegistry $registry;
+
+    public function __construct(?ExtensionRegistry $registry = null)
+    {
+        $this->registry = $registry ?? new ExtensionRegistry();
+    }
 
     /**
-     * @param  class-string<ExtendsContent>  $extender
+     * @param  class-string  $extender
      */
     public function register(string $alias, string $extender): void
     {
-        $this->extenders[$alias] = $extender;
+        $this->registry->register(Content::class, $alias, $extender);
     }
 
     public function has(string $alias): bool
     {
-        return array_key_exists($alias, $this->extenders);
+        return $this->registry->has(Content::class, $alias);
     }
 
     /**
-     * @return class-string<ExtendsContent>
+     * @return class-string
+     *
+     * @throws InvalidArgumentException when the alias is not registered
      */
     public function resolve(string $alias): string
     {
@@ -44,7 +49,7 @@ final class ContentExtenderRegistry
             throw new InvalidArgumentException("No content extender registered for alias [{$alias}].");
         }
 
-        return $this->extenders[$alias];
+        return $this->registry->resolve(Content::class, $alias);
     }
 
     /**
@@ -52,6 +57,6 @@ final class ContentExtenderRegistry
      */
     public function aliases(): array
     {
-        return array_keys($this->extenders);
+        return $this->registry->aliases(Content::class);
     }
 }

@@ -7,6 +7,7 @@ namespace Modules\CMS\Tests\Stubs\ContentExtension;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use LogicException;
 use Modules\CMS\Contracts\ExtendsContent;
+use Modules\CMS\Models\Content;
 use Override;
 
 /**
@@ -44,5 +45,35 @@ final class FakeContentExtender implements ExtendsContent
     public function searchableExtensionMapping(): array
     {
         return [];
+    }
+
+    #[Override]
+    public function extendedModel(): string
+    {
+        return Content::class;
+    }
+
+    #[Override]
+    public function extensionAlias(): string
+    {
+        return $this->contentAlias();
+    }
+
+    #[Override]
+    public function extensionHostKey(): string
+    {
+        return 'content_id';
+    }
+
+    #[Override]
+    public function extensionHostRelation(): string
+    {
+        return 'content';
+    }
+
+    #[Override]
+    public function extensionOwnColumns(): array
+    {
+        return ['id', 'content_id'];
     }
 }

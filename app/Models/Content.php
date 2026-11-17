@@ -6,7 +6,6 @@ namespace Modules\CMS\Models;
 
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
-use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -16,7 +15,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\CMS\Casts\EntityType;
 use Modules\CMS\Casts\ReadingStatistics;
-use Modules\CMS\Contracts\ExtendsContent;
 use Modules\CMS\Contracts\Taggable;
 use Modules\CMS\Database\Factories\ContentFactory;
 use Modules\CMS\Enums\CMSTables;
@@ -28,10 +26,9 @@ use Modules\CMS\Models\Pivot\Locatable;
 use Modules\CMS\Models\Pivot\Relatable;
 use Modules\CMS\Models\Translations\ContentTranslation;
 use Modules\CMS\Observers\ContentObserver;
-use Modules\CMS\Scopes\HidesExtendedContent;
-use Modules\CMS\Services\ContentExtenderRegistry;
 use Modules\Core\Approvals\Operation;
 use Modules\Core\Contracts\IDynamicContentModel;
+use Modules\Core\Contracts\IExtendableModel;
 use Modules\Core\Contracts\IDynamicEntityTypable;
 use Modules\Core\Contracts\IEmbeddableModel;
 use Modules\Core\Contracts\ILockableModel;
@@ -39,7 +36,6 @@ use Modules\Core\Contracts\IOptimisticLockableModel;
 use Modules\Core\Contracts\IPreloadsAppendedRelations;
 use Modules\Core\Contracts\ISearchableModel;
 use Modules\Core\Contracts\IValidatableModel;
-use Modules\Core\Contracts\ProvidesDefaultSearchFilters;
 use Modules\Core\Contracts\ProvidesFacetLabelSources;
 use Modules\Core\Contracts\ProvidesSyncableRelations;
 use Modules\Core\Enums\CoreTables;
@@ -47,6 +43,7 @@ use Modules\Core\Helpers\LocaleContext;
 use Modules\Core\Locking\Traits\HasLocks;
 use Modules\Core\Locking\Traits\HasOptimisticLocking;
 use Modules\Core\Models\Concerns\HasApprovals;
+use Modules\Core\Models\Concerns\HasExtensions;
 use Modules\Core\Models\Concerns\HasPath;
 use Modules\Core\Models\Concerns\HasTranslatedDynamicContents;
 use Modules\Core\Models\Concerns\HasValidity;
@@ -74,7 +71,7 @@ use Spatie\MediaLibrary\HasMedia;
  * @phpstan-use Searchable<Content>
  */
 #[ObservedBy(ContentObserver::class)]
-final class Content extends Model implements HasMedia, IEmbeddableModel, IDynamicContentModel, ILockableModel, IOptimisticLockableModel, IPreloadsAppendedRelations, IProvidesRerankerText, ISearchableModel, IValidatableModel, ProvidesDefaultSearchFilters, ProvidesFacetLabelSources, ProvidesSyncableRelations, Sortable, Taggable
+final class Content extends Model implements HasMedia, IDynamicContentModel, IEmbeddableModel, IExtendableModel, ILockableModel, IOptimisticLockableModel, IPreloadsAppendedRelations, IProvidesRerankerText, ISearchableModel, IValidatableModel, ProvidesFacetLabelSources, ProvidesSyncableRelations, Sortable, Taggable
 {
     // region Traits
     use HasApprovals {
@@ -82,6 +79,7 @@ final class Content extends Model implements HasMedia, IEmbeddableModel, IDynami
         HasApprovals::requiresApprovalWhen as private requiresApprovalWhenTrait;
         HasApprovals::requiresApprovalForOperation as private requiresApprovalForOperationTrait;
     }
+    use HasExtensions;
     use HasLocks;
     use HasMultimedia;
     use HasOptimisticLocking;
@@ -223,6 +221,18 @@ final class Content extends Model implements HasMedia, IEmbeddableModel, IDynami
     }
 
     /**
+     * The column holding the alias of the module extending a content (e.g. `shop.product`), null for a normal
+     * content. Content is a host of the Core extension contracts ({@see HasExtensions}): extended contents are hidden
+     * from every default read and kept out of the generic search by the host contract, and an opt-in surface reads
+     * them with `withExtended()` (spec 2026-11-17-extended-entity-search-design.md, XS11, XS13).
+     */
+    #[Override]
+    public function extensionTypeColumn(): string
+    {
+        return 'extended_type';
+    }
+
+    /**
      * Facet label sources for foreign keys exposed through accessors rather than a
      * BelongsTo: the content type (`entity_id`) labels from the entity name.
      *
@@ -234,20 +244,6 @@ final class Content extends Model implements HasMedia, IEmbeddableModel, IDynami
         return [
             'entity' => new FacetLabelSource(relatedClass: Entity::class, foreignKey: 'entity_id'),
         ];
-    }
-
-    /**
-     * Generic content search excludes extended contents by filtering `extended_type IS NULL` at the
-     * engine (`= null` becomes `IS NULL` in the query builder), so they never come back from the
-     * engine only to be dropped at rehydration by the hide scope. An opt-in surface (e.g. a shop
-     * search) can query them via the per-alias `extended_type` value.
-     *
-     * @return array<string, scalar|null>
-     */
-    #[Override]
-    public function defaultSearchFilters(): array
-    {
-        return ['extended_type' => null];
     }
 
     /**
@@ -511,22 +507,6 @@ final class Content extends Model implements HasMedia, IEmbeddableModel, IDynami
     }
 
     /**
-     * Include extended contents in the bulk search import (they are hidden by the default scope).
-     * Per-save indexing already sees them, since it uses the model instance rather than a query.
-     *
-     * @param  Builder<Content>  $query
-     * @return Builder<Content>
-     */
-    public function makeAllSearchableUsing(Builder $query): Builder
-    {
-        // Mirror the Searchable trait default (drop LocaleScope) and additionally include extended
-        // contents, which the HidesExtendedContent scope removes from the import query.
-        return $query
-            ->withoutGlobalScope(\Modules\Core\Overrides\LocaleScope::class)
-            ->withoutGlobalScope(HidesExtendedContent::class);
-    }
-
-    /**
      * @return array<string, mixed>
      */
     public function getSearchMapping(): array
@@ -586,7 +566,7 @@ final class Content extends Model implements HasMedia, IEmbeddableModel, IDynami
         // registered, so a plain CMS install maps neither.
         $schema->addField(new FieldDefinition('extended_type', FieldType::Keyword, [IndexType::Filterable]));
 
-        $extension_properties = $this->composeExtensionMapping();
+        $extension_properties = $this->extensionSearchMapping();
 
         if ($extension_properties !== []) {
             $schema->addField(new FieldDefinition('extension', FieldType::Object, [IndexType::Searchable, IndexType::Filterable], ['properties' => $extension_properties]));
@@ -692,30 +672,11 @@ final class Content extends Model implements HasMedia, IEmbeddableModel, IDynami
             /** @var Builder<Content> $query */
             $query->ordered();
         });
-
-        // Extended contents (the body of a module extender) are hidden by default; opt back in
-        // with withExtended(). See the content-extension seam (Modules/CMS/app/Scopes).
-        self::addGlobalScope(new HidesExtendedContent());
     }
 
     protected static function newFactory(): ContentFactory
     {
         return ContentFactory::new();
-    }
-
-    /**
-     * Include contents that are extended by a module (see {@see ExtendsContent}).
-     *
-     * Removes only the {@see HidesExtendedContent} scope; soft-delete and every other global scope
-     * stay applied. On its own it yields plain `Content` rows; upcasting to the extender is a separate
-     * explicit step.
-     *
-     * @param  Builder<Content>  $query
-     */
-    #[Scope]
-    protected function withExtended(Builder $query): void
-    {
-        $query->withoutGlobalScope(HidesExtendedContent::class);
     }
 
     /**
@@ -830,67 +791,6 @@ final class Content extends Model implements HasMedia, IEmbeddableModel, IDynami
         }
 
         return mb_trim(implode(' ', array_unique(array_filter($terms, static fn (string $term): bool => $term !== ''))));
-    }
-
-    /**
-     * Union of every registered extender's `searchableExtensionMapping()` under the nested
-     * `extension` object, plus the alias `type`. Empty when no extender is registered (C13, C14).
-     *
-     * @return array<string, mixed>
-     */
-    private function composeExtensionMapping(): array
-    {
-        $registry = app(ContentExtenderRegistry::class);
-        $aliases = $registry->aliases();
-
-        if ($aliases === []) {
-            return [];
-        }
-
-        $properties = ['type' => ['type' => FieldType::Keyword, 'filterable' => true]];
-
-        foreach ($aliases as $alias) {
-            $extender = $registry->resolve($alias);
-
-            foreach ((new $extender())->searchableExtensionMapping() as $field => $definition) {
-                $properties[$field] ??= $definition;
-            }
-        }
-
-        return $properties;
-    }
-
-    /**
-     * The extender's `searchableExtension()` payload for this content, keyed by its alias `type`,
-     * or null when the content is not extended. Resolved through the {@see ContentExtenderRegistry}
-     * so CMS never references the concrete extender class (C11).
-     *
-     * @return array<string, mixed>|null
-     */
-    private function extensionSearchDocument(): ?array
-    {
-        $alias = $this->extended_type;
-
-        if ($alias === null) {
-            return null;
-        }
-
-        $registry = app(ContentExtenderRegistry::class);
-
-        if (! $registry->has($alias)) {
-            return null;
-        }
-
-        /** @var class-string<\Illuminate\Database\Eloquent\Model> $class */
-        $class = $registry->resolve($alias);
-
-        $extender = $class::query()->whereIn('content_id', [$this->getKey()])->first();
-
-        if (! $extender instanceof ExtendsContent) {
-            return null;
-        }
-
-        return ['type' => $alias, ...$extender->searchableExtension()];
     }
 
     private function findContentTranslation(string $locale): ?ContentTranslation

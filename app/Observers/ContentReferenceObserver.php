@@ -6,9 +6,9 @@ namespace Modules\CMS\Observers;
 
 use Modules\CMS\Models\Content;
 use Modules\CMS\Models\ContentReference;
-use Modules\CMS\Scopes\HidesExtendedContent;
 use Modules\Core\Authorization\RetrievedSelectGuard;
 use Modules\Core\Overrides\LocaleScope;
+use Modules\Core\Search\Extensions\HidesExtendedRows;
 
 /**
  * Re-sends a content to the search engine when one of its references is added, changed or removed, because
@@ -47,7 +47,7 @@ final class ContentReferenceObserver
         RetrievedSelectGuard::forSystemRead(static function () use ($reference): void {
             $content = Content::query()
                 ->withoutGlobalScope(LocaleScope::class)
-                ->withoutGlobalScope(HidesExtendedContent::class)
+                ->withoutGlobalScope(HidesExtendedRows::class)
                 ->find($reference->content_id);
 
             if ($content instanceof Content) {

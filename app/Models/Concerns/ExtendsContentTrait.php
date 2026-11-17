@@ -7,8 +7,8 @@ namespace Modules\CMS\Models\Concerns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Modules\CMS\Models\Content;
-use Modules\CMS\Scopes\HidesExtendedContent;
 use Modules\CMS\Services\ContentExtensionCascade;
+use Modules\Core\Search\Extensions\HidesExtendedRows;
 use Override;
 
 /**
@@ -116,7 +116,46 @@ trait ExtendsContentTrait
     public function content(): BelongsTo
     {
         return $this->belongsTo(Content::class, 'content_id')
-            ->withoutGlobalScope(HidesExtendedContent::class);
+            ->withoutGlobalScope(HidesExtendedRows::class);
+    }
+
+    /**
+     * The host of the Core extension contracts this model extends.
+     *
+     * @return class-string<Content>
+     */
+    public function extendedModel(): string
+    {
+        return Content::class;
+    }
+
+    /**
+     * The alias stored in `contents.extended_type`: the content alias of the extender.
+     */
+    public function extensionAlias(): string
+    {
+        return $this->contentAlias();
+    }
+
+    public function extensionHostKey(): string
+    {
+        return 'content_id';
+    }
+
+    public function extensionHostRelation(): string
+    {
+        return 'content';
+    }
+
+    /**
+     * The columns of the extender's own table. An extender that keeps an explicit list of its columns (the keys
+     * its merge routes to itself) returns that list instead.
+     *
+     * @return list<string>
+     */
+    public function extensionOwnColumns(): array
+    {
+        return array_values($this->getConnection()->getSchemaBuilder()->getColumnListing($this->getTable()));
     }
 
     /**

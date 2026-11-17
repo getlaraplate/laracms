@@ -7,8 +7,8 @@ namespace Modules\CMS\Observers;
 use Illuminate\Database\Eloquent\Model;
 use Modules\CMS\Contracts\ExtendsContent;
 use Modules\CMS\Models\Content;
-use Modules\CMS\Services\ContentExtenderRegistry;
 use Modules\CMS\Services\ContentExtensionCascade;
+use Modules\Core\Search\Extensions\ExtensionRegistry;
 
 /**
  * Reverse leg of the content-extension lifecycle (C9): a content deleted directly is applied to its
@@ -18,7 +18,7 @@ use Modules\CMS\Services\ContentExtensionCascade;
  */
 final readonly class ContentExtensionObserver
 {
-    public function __construct(private ContentExtenderRegistry $registry) {}
+    public function __construct(private ExtensionRegistry $registry) {}
 
     public function deleting(Content $content): void
     {
@@ -28,12 +28,12 @@ final readonly class ContentExtensionObserver
 
         $alias = $content->extended_type;
 
-        if ($alias === null || ! $this->registry->has($alias)) {
+        if ($alias === null || ! $this->registry->has(Content::class, $alias)) {
             return;
         }
 
         /** @var class-string<Model> $class */
-        $class = $this->registry->resolve($alias);
+        $class = $this->registry->resolve(Content::class, $alias);
 
         $extender = $class::query()->whereIn('content_id', [$content->getKey()])->first();
 
