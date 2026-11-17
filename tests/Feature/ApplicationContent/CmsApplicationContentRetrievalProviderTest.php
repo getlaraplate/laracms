@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Laravel\Scout\EngineManager;
@@ -291,4 +292,80 @@ it('marks result truncation only when another authorized projected hit exists', 
         ->and($exact->truncated)->toBeFalse()
         ->and($overflow->hits)->toHaveCount(2)
         ->and($overflow->truncated)->toBeTrue();
+});
+
+/**
+ * A provider whose engine records the filters of every search it receives and finds nothing.
+ *
+ * @param  list<FiltersGroup|null>  $received
+ */
+function cms_retrieval_provider_recording_filters(array &$received): CmsApplicationContentRetrievalProvider
+{
+    $engine = Mockery::mock(ISearchEngine::class);
+    $engine->shouldReceive('supportsOrchestratedSearch')->andReturnTrue();
+    $engine->shouldReceive('supportsOrchestratedVectorSearch')->andReturnFalse();
+    app(EngineManager::class)->extend('cms-application-content-test', static fn () => $engine);
+    config()->set('scout.driver', 'cms-application-content-test');
+
+    $ensemble = Mockery::mock(EnsembleSearchService::class);
+    $ensemble->shouldReceive('search')->andReturnUsing(static function (Model $model, string $query, array $plan, ?array $vector, int $page, int $perPage, ?FiltersGroup $filters = null) use (&$received): AdvancedSearchResult {
+        $received[] = $filters;
+
+        return AdvancedSearchResult::empty($page, $perPage);
+    });
+
+    return new CmsApplicationContentRetrievalProvider(
+        new AdvancedSearchService(
+            new FixedSearchStrategyResolver(planner: new FallbackSearchPlanner, intent_parser: new SimpleQueryIntentParser),
+            $ensemble,
+            app(),
+        ),
+        app(AuthorizationService::class),
+        app(QueryBuilder::class),
+        new CmsContentEvidenceProjector,
+    );
+}
+
+/**
+ * The column filters of a tree, at any depth, as `[property, value]` pairs.
+ *
+ * @return list<array{0: string, 1: mixed}>
+ */
+function cms_retrieval_column_filters(?FiltersGroup $filters): array
+{
+    if (! $filters instanceof FiltersGroup) {
+        return [];
+    }
+
+    $columns = [];
+
+    foreach ($filters->filters as $node) {
+        if ($node instanceof FiltersGroup) {
+            $columns = [...$columns, ...cms_retrieval_column_filters($node)];
+        } elseif ($node instanceof Filter) {
+            $columns[] = [$node->property, $node->value];
+        }
+    }
+
+    return $columns;
+}
+
+it('keeps extended contents out of the engine query of the assistant retrieval, with the authorization filters', function (): void {
+    $received = [];
+    $authorization = new ApplicationContentAuthorization(
+        'default.contents.select',
+        new FiltersGroup([new Filter('id', 42)]),
+    );
+
+    cms_retrieval_provider_recording_filters($received)->retrieve(cms_retrieval_query(), $authorization);
+
+    expect($received)->not->toBeEmpty();
+
+    foreach ($received as $filters) {
+        $columns = cms_retrieval_column_filters($filters);
+
+        expect($columns)->toContain(['extended_type', null])
+            ->and($columns)->toContain(['id', 42])
+            ->and(array_filter($columns, static fn (array $column): bool => $column[0] === 'extended_type'))->toHaveCount(1);
+    }
 });
