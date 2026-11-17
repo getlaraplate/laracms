@@ -57,6 +57,7 @@ use Modules\Core\Search\Contracts\IProvidesRerankerText;
 use Modules\Core\Search\DTOs\VectorProfile;
 use Modules\Core\Search\Schema\FieldDefinition;
 use Modules\Core\Search\Schema\FieldType;
+use Modules\Core\Search\Schema\IndexedRelation;
 use Modules\Core\Search\Schema\IndexType;
 use Modules\Core\Search\Support\VectorProfileContext;
 use Modules\Core\Search\Traits\Searchable;
@@ -391,6 +392,33 @@ final class Content extends Model implements HasMedia, IEmbeddableModel, IDynami
     }
 
     /**
+     * The relations indexed in the search document, declared once for the document and the mapping (Core
+     * {@see IndexedRelation}, spec 2026-11-17-extended-entity-search-design.md, XS14). `tags` names are keywords;
+     * `locations` add the address fields, keep `path` unfiltered and are not facets.
+     *
+     * @return list<IndexedRelation>
+     */
+    private static function indexedRelations(): array
+    {
+        $keyword_filter = ['type' => FieldType::Keyword, 'filterable' => true];
+
+        return [
+            new IndexedRelation('contributors'),
+            new IndexedRelation('categories'),
+            new IndexedRelation('tags', properties: ['name' => FieldType::Keyword]),
+            new IndexedRelation('locations', properties: [
+                'path' => FieldType::Keyword,
+                'address' => FieldType::Text,
+                'city' => $keyword_filter,
+                'province' => $keyword_filter,
+                'country' => $keyword_filter,
+                'postcode' => $keyword_filter,
+                'zone' => $keyword_filter,
+            ], indexTypes: [IndexType::Searchable, IndexType::Filterable]),
+        ];
+    }
+
+    /**
      * Get the relations to eager load when indexing the model.
      *
      * @return list<string>
@@ -427,21 +455,11 @@ final class Content extends Model implements HasMedia, IEmbeddableModel, IDynami
         $preset = $this->preset;
         $document['preset'] = $preset !== null ? $preset->name : '';
         // $document['preset_id'] = $this->preset->id;
-        $document['contributors'] = $this->contributors->map(fn (Contributor $contributor) => $contributor->only(['id', 'name', 'slug', 'path']))->values()->all();
-        $document['categories'] = $this->categories->map(fn (Category $category) => $category->only(['id', 'name', 'slug', 'path']))->values()->all();
-        $document['tags'] = $this->tags->map(fn (Tag $tag) => $tag->only(['id', 'name', 'slug', 'path']))->values()->all();
-        $document['locations'] = $this->locations->map(fn (Location $location) => $location->only([
-            'id',
-            'name',
-            'slug',
-            'path',
-            'address',
-            'city',
-            'province',
-            'country',
-            'postcode',
-            'zone',
-        ]))->values()->all();
+
+        foreach (self::indexedRelations() as $relation) {
+            $document[$relation->field()->name] = $relation->document($this->getAttribute($relation->relation) ?? []);
+        }
+
         $document['type'] = $this->type;
         $document['references'] = $this->referencesSearchText();
 
@@ -516,48 +534,11 @@ final class Content extends Model implements HasMedia, IEmbeddableModel, IDynami
         $schema = $this->getSchemaDefinition();
         $schema->addField(new FieldDefinition('entity', FieldType::Keyword, [IndexType::Searchable, IndexType::Filterable, IndexType::Facetable]));
         $schema->addField(new FieldDefinition('preset', FieldType::Keyword, [IndexType::Searchable, IndexType::Filterable, IndexType::Facetable]));
-        $schema->addField(new FieldDefinition('contributors', FieldType::Array, [IndexType::Searchable, IndexType::Filterable, IndexType::Facetable], [
-            'relation' => 'contributors',
-            'properties' => [
-                'name' => FieldType::Text,
-                'id' => ['type' => FieldType::Integer, 'filterable' => true],
-                'slug' => ['type' => FieldType::Keyword, 'filterable' => true],
-                'path' => ['type' => FieldType::Keyword, 'filterable' => true],
-            ],
-        ]));
-        $schema->addField(new FieldDefinition('categories', FieldType::Array, [IndexType::Searchable, IndexType::Filterable, IndexType::Facetable], [
-            'relation' => 'categories',
-            'properties' => [
-                'name' => FieldType::Text,
-                'id' => ['type' => FieldType::Integer, 'filterable' => true],
-                'slug' => ['type' => FieldType::Keyword, 'filterable' => true],
-                'path' => ['type' => FieldType::Keyword, 'filterable' => true],
-            ],
-        ]));
-        $schema->addField(new FieldDefinition('tags', FieldType::Array, [IndexType::Searchable, IndexType::Filterable, IndexType::Facetable], [
-            'relation' => 'tags',
-            'properties' => [
-                'name' => FieldType::Keyword,
-                'id' => ['type' => FieldType::Integer, 'filterable' => true],
-                'slug' => ['type' => FieldType::Keyword, 'filterable' => true],
-                'path' => ['type' => FieldType::Keyword, 'filterable' => true],
-            ],
-        ]));
-        $schema->addField(new FieldDefinition('locations', FieldType::Array, [IndexType::Searchable, IndexType::Filterable], [
-            'relation' => 'locations',
-            'properties' => [
-                'name' => FieldType::Text,
-                'id' => ['type' => FieldType::Integer, 'filterable' => true],
-                'slug' => ['type' => FieldType::Keyword, 'filterable' => true],
-                'path' => FieldType::Keyword,
-                'address' => FieldType::Text,
-                'city' => ['type' => FieldType::Keyword, 'filterable' => true],
-                'province' => ['type' => FieldType::Keyword, 'filterable' => true],
-                'country' => ['type' => FieldType::Keyword, 'filterable' => true],
-                'postcode' => ['type' => FieldType::Keyword, 'filterable' => true],
-                'zone' => ['type' => FieldType::Keyword, 'filterable' => true],
-            ],
-        ]));
+
+        foreach (self::indexedRelations() as $relation) {
+            $schema->addField($relation->field());
+        }
+
         $schema->addField(new FieldDefinition('type', FieldType::Keyword, [IndexType::Searchable, IndexType::Filterable]));
         $schema->addField(new FieldDefinition('references', FieldType::Text, [IndexType::Searchable]));
         $schema->addField(new FieldDefinition('valid_from', FieldType::Date, [IndexType::Searchable, IndexType::Filterable, IndexType::Sortable]));

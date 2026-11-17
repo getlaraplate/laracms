@@ -5,13 +5,22 @@ declare(strict_types=1);
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Modules\CMS\Casts\EntityType;
+use Modules\CMS\Models\Category;
 use Modules\CMS\Models\Content;
+use Modules\CMS\Models\Contributor;
 use Modules\CMS\Models\Entity;
+use Modules\CMS\Models\Location;
 use Modules\CMS\Models\Pivot\Presettable;
 use Modules\CMS\Models\Preset;
+use Modules\CMS\Models\Tag;
 use Modules\CMS\Models\Translations\ContentTranslation;
 use Modules\CMS\Tests\TestCase;
 use Modules\Core\Search\DTOs\VectorProfile;
+use Modules\Core\Search\Schema\FieldDefinition;
+use Modules\Core\Search\Schema\FieldType;
+use Modules\Core\Search\Schema\IndexType;
+use Modules\Core\Search\Schema\SchemaDefinition;
+use Modules\Core\Search\Translators\ElasticsearchTranslator;
 use Modules\Core\Tests\Support\FakeVectorProfile;
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -130,4 +139,80 @@ it('declares the Content embeddings field without a nested vector when there is 
 
 it('declares valid_from as the date a search period is applied to', function (): void {
     expect(new Content()->searchDateField())->toBe('valid_from');
+});
+
+/**
+ * The indexed relations of Content exactly as `getSearchMapping()` declared them before the Core `IndexedRelation`
+ * helper (spec 2026-11-17-extended-entity-search-design.md, XS14): the pin the helper must reproduce.
+ *
+ * @return list<FieldDefinition>
+ */
+function content_indexed_relation_fields_before_helper(): array
+{
+    $base = [
+        'name' => FieldType::Text,
+        'id' => ['type' => FieldType::Integer, 'filterable' => true],
+        'slug' => ['type' => FieldType::Keyword, 'filterable' => true],
+        'path' => ['type' => FieldType::Keyword, 'filterable' => true],
+    ];
+    $faceted = [IndexType::Searchable, IndexType::Filterable, IndexType::Facetable];
+
+    return [
+        new FieldDefinition('contributors', FieldType::Array, $faceted, ['relation' => 'contributors', 'properties' => $base]),
+        new FieldDefinition('categories', FieldType::Array, $faceted, ['relation' => 'categories', 'properties' => $base]),
+        new FieldDefinition('tags', FieldType::Array, $faceted, ['relation' => 'tags', 'properties' => ['name' => FieldType::Keyword] + $base]),
+        new FieldDefinition('locations', FieldType::Array, [IndexType::Searchable, IndexType::Filterable], [
+            'relation' => 'locations',
+            'properties' => [
+                'name' => FieldType::Text,
+                'id' => ['type' => FieldType::Integer, 'filterable' => true],
+                'slug' => ['type' => FieldType::Keyword, 'filterable' => true],
+                'path' => FieldType::Keyword,
+                'address' => FieldType::Text,
+                'city' => ['type' => FieldType::Keyword, 'filterable' => true],
+                'province' => ['type' => FieldType::Keyword, 'filterable' => true],
+                'country' => ['type' => FieldType::Keyword, 'filterable' => true],
+                'postcode' => ['type' => FieldType::Keyword, 'filterable' => true],
+                'zone' => ['type' => FieldType::Keyword, 'filterable' => true],
+            ],
+        ]),
+    ];
+}
+
+it('maps the indexed relations of Content as they were declared before the indexed-relation helper', function (): void {
+    $content = createBilingualSearchableContent('Titolo di prova', 'Test title');
+    config(['scout.driver' => 'elasticsearch']);
+
+    $schema = new SchemaDefinition('contents');
+
+    foreach (content_indexed_relation_fields_before_helper() as $field) {
+        $schema->addField($field);
+    }
+
+    $expected = (new ElasticsearchTranslator)->translate($schema)['mappings']['properties'];
+    $properties = $content->getSearchMapping()['mappings']['properties'];
+
+    foreach (['contributors', 'categories', 'tags', 'locations'] as $relation) {
+        expect($properties[$relation])->toBe($expected[$relation]);
+    }
+});
+
+it('writes the indexed relations of Content with the keys and values they had before the indexed-relation helper', function (): void {
+    $content = createBilingualSearchableContent('Titolo di prova', 'Test title');
+    $content->setRelation('contributors', Contributor::factory()->count(2)->create());
+    $content->setRelation('categories', Category::factory()->count(2)->create());
+    $content->setRelation('tags', Tag::factory()->count(2)->create());
+    $content->setRelation('locations', Location::factory()->count(2)->create());
+
+    $document = $content->toSearchableArray();
+    $before = static fn (iterable $records, array $keys): array => collect($records)->map(static fn ($record): array => $record->only($keys))->values()->all();
+    $base = ['id', 'name', 'slug', 'path'];
+
+    // Compared by key and value: the helper lists `name` first, the code before it listed `id` first.
+    expect($document['contributors'])->toEqual($before($content->contributors, $base))
+        ->and($document['categories'])->toEqual($before($content->categories, $base))
+        ->and($document['tags'])->toEqual($before($content->tags, $base))
+        ->and($document['locations'])->toEqual($before($content->locations, [...$base, 'address', 'city', 'province', 'country', 'postcode', 'zone']))
+        ->and($document['contributors'])->toHaveCount(2)
+        ->and($document['locations'])->toHaveCount(2);
 });
