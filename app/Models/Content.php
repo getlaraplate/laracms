@@ -60,6 +60,7 @@ use Modules\Core\Search\Schema\FieldType;
 use Modules\Core\Search\Schema\IndexType;
 use Modules\Core\Search\Support\VectorProfileContext;
 use Modules\Core\Search\Traits\Searchable;
+use Modules\Core\Support\EditorPlainText;
 use Modules\Core\Services\Crud\DTOs\FacetLabelSource;
 use Override;
 use Spatie\EloquentSortable\Sortable;
@@ -207,7 +208,7 @@ final class Content extends Model implements HasMedia, IEmbeddableModel, IDynami
             $parts = [$translation->title];
 
             foreach (($translation->components ?? []) as $value) {
-                $parts[] = $content->searchableComponentValue($value);
+                $parts[] = EditorPlainText::fromValue($value);
             }
 
             $text = mb_trim(implode(' ', array_filter($parts, static fn (mixed $part): bool => is_string($part) && $part !== '')));
@@ -465,7 +466,7 @@ final class Content extends Model implements HasMedia, IEmbeddableModel, IDynami
             $slug[$locale] = $translation->slug;
 
             foreach (($translation->components ?? []) as $field => $value) {
-                $components[$field][$locale] = $this->searchableComponentValue($value);
+                $components[$field][$locale] = EditorPlainText::fromValue($value);
             }
         }
 
@@ -848,27 +849,6 @@ final class Content extends Model implements HasMedia, IEmbeddableModel, IDynami
         }
 
         return mb_trim(implode(' ', array_unique(array_filter($terms, static fn (string $term): bool => $term !== ''))));
-    }
-
-    /**
-     * An Editor.js document is indexed as its plain text: its blocks differ in
-     * shape (the same `data` key is a string in one block type and an object in
-     * another), so indexing them as they are breaks the engine's field mapping,
-     * and only their text is worth searching.
-     */
-    private function searchableComponentValue(mixed $value): mixed
-    {
-        if (is_string($value)) {
-            return Str::replaceMatches('/\\n|\\r|\\t/', '', $value);
-        }
-
-        $blocks = match (true) {
-            is_array($value) && array_key_exists('blocks', $value) => $value['blocks'],
-            is_object($value) && property_exists($value, 'blocks') => $value->blocks,
-            default => null,
-        };
-
-        return is_iterable($blocks) ? ReadingStatistics::plainText($blocks) : $value;
     }
 
     /**
