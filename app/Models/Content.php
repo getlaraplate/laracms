@@ -33,6 +33,7 @@ use Modules\CMS\Services\ContentExtenderRegistry;
 use Modules\Core\Approvals\Operation;
 use Modules\Core\Contracts\IDynamicContentModel;
 use Modules\Core\Contracts\IDynamicEntityTypable;
+use Modules\Core\Contracts\IEmbeddableModel;
 use Modules\Core\Contracts\ILockableModel;
 use Modules\Core\Contracts\IOptimisticLockableModel;
 use Modules\Core\Contracts\IPreloadsAppendedRelations;
@@ -71,7 +72,7 @@ use Spatie\MediaLibrary\HasMedia;
  * @phpstan-use Searchable<Content>
  */
 #[ObservedBy(ContentObserver::class)]
-final class Content extends Model implements HasMedia, IDynamicContentModel, ILockableModel, IOptimisticLockableModel, IPreloadsAppendedRelations, IProvidesRerankerText, ISearchableModel, IValidatableModel, ProvidesDefaultSearchFilters, ProvidesFacetLabelSources, ProvidesSyncableRelations, Sortable, Taggable
+final class Content extends Model implements HasMedia, IEmbeddableModel, IDynamicContentModel, ILockableModel, IOptimisticLockableModel, IPreloadsAppendedRelations, IProvidesRerankerText, ISearchableModel, IValidatableModel, ProvidesDefaultSearchFilters, ProvidesFacetLabelSources, ProvidesSyncableRelations, Sortable, Taggable
 {
     // region Traits
     use HasApprovals {
@@ -655,13 +656,11 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, ILo
         return $entity !== null ? $entity->slug : '';
     }
 
-    #[Override]
     public function getPath(): ?string
     {
         return $this->categories->first()?->getPath();
     }
 
-    #[Override]
     public function toArray(): array
     {
         $parsed = parent::toArray();
