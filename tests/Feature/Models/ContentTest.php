@@ -415,6 +415,37 @@ it('provides the text a reranker reads: the title and the text components in the
         ->not->toContain('English');
 });
 
+/**
+ * An Editor component is read as its plain text, the same text for the reranker and the search index, and a plain
+ * string component loses its line breaks. Pins the output before the readers moved to Core `EditorPlainText`.
+ */
+it('reads an Editor component as its plain text for the reranker and the search index', function (): void {
+    $content = Content::factory()->create();
+    $content->setTranslation('it', [
+        'title' => 'Titolo',
+        'slug' => 'titolo',
+        'components' => [
+            'content' => ['blocks' => [
+                ['type' => 'header', 'data' => ['text' => 'Intestazione <b>forte</b>']],
+                ['type' => 'paragraph', 'data' => ['text' => 'Caff&egrave; aperto,<br>ogni giorno.']],
+                ['type' => 'list', 'data' => ['items' => ['Uno', ['text' => 'Due']]]],
+                ['type' => 'table', 'data' => ['content' => [['A', 'B']]]],
+            ]],
+            'short_content' => "riga uno\nriga due",
+        ],
+    ]);
+    $content->save();
+
+    $editor_text = 'Intestazione forte Caffè aperto, ogni giorno. Uno Due A B';
+    $reranker_text = Content::rerankerTexts([$content->id], 'it')[$content->id] ?? null;
+    $document = Content::query()->findOrFail($content->id)->toSearchableArray();
+
+    expect($reranker_text)->toContain($editor_text)
+        ->toContain('riga unoriga due')
+        ->and($document['content']['it'])->toBe($editor_text)
+        ->and($document['short_content']['it'])->toBe('riga unoriga due');
+});
+
 it('leaves out the contents with no translation in the language asked', function (): void {
     $kept = Content::factory()->create();
     // The factory translates into a random subset of the locales, so the one asked is set explicitly.

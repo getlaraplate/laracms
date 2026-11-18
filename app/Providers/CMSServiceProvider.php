@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\CMS\Providers;
 
 use Exception;
+use Illuminate\Contracts\Foundation\Application;
 use Modules\CMS\ApplicationContent\CmsApplicationContentRetrievalProvider;
 use Modules\CMS\Graph\CmsGraphProvider;
 use Modules\CMS\Import\CategoryImporter;
@@ -26,6 +27,7 @@ use Modules\Core\Graph\Contracts\GraphProviderRegistryInterface;
 use Modules\Core\Import\Support\EntityImporterRegistry;
 use Modules\Core\Models\Place;
 use Modules\Core\Overrides\ModuleServiceProvider;
+use Modules\Core\Search\Extensions\ExtensionRegistry;
 use Modules\Core\Search\OwnerAuthorizerRegistry;
 use Modules\Core\Services\ModerationAdapterRegistry;
 use Override;
@@ -51,7 +53,8 @@ final class CMSServiceProvider extends ModuleServiceProvider
     {
         parent::register();
 
-        $this->app->singleton(ContentExtenderRegistry::class);
+        // Deprecated delegate over the Core registry, kept while extenders still register through it.
+        $this->app->singleton(ContentExtenderRegistry::class, static fn (Application $app): ContentExtenderRegistry => new ContentExtenderRegistry($app->make(ExtensionRegistry::class)));
 
         $this->app->register(ImportServiceProvider::class);
     }
