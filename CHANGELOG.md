@@ -2,6 +2,58 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.48.0] - 2026-11-18
+
+### 🚀 Features
+
+- *(tags)* Store the tag type as a slug, suggest it and sort the list by slug
+- *(tags)* Pick the tag type from a searchable select
+- *(tags)* One live tag per locale and slug
+- *(tags)* Validate the slug of a tag in its locale
+- *(import)* One tag across several sources
+- *(import)* The CSV tag import matches by slug
+- *(cms)* Contents declare valid_from as their search date field
+- *(cms)* Contents declare an embedding context header
+- *(cms)* Enhance ContributorsTable with new text columns and avatar handling
+- *(cms)* Extenders declare no preset entity by default
+
+### 🐛 Bug Fixes
+
+- *(tags)* Findings of the final review
+- *(cms)* Keep entity ids as keys of the filament tab counts
+- *(cms)* Give the media-library disk its own served URL
+- *(content)* Implement IEmbeddableModel in Content class
+
+### 🚜 Refactor
+
+- *(cms)* Read the vector profile instead of core.search.vector
+- *(analytics)* Resolve the Elasticsearch client of the container instead of building one
+- *(cms)* Editor plain text from Core
+- *(cms)* Indexed relations of Content through the Core helper
+- *(cms)* Content is a host of the Core extension contracts
+- *(cms)* Remove the deprecated content extension registry and resolver
+
+### 📚 Documentation
+
+- *(versioning)* A content deleted for good keeps one snapshot set
+- *(cms)* Search date field and embedding header
+- Require Laravel 13
+- *(cms)* Extended entity search and list
+
+### 🧪 Testing
+
+- *(versioning)* Hard delete snapshot of an extender and purge of expired contents (Slice 4 C2, C3)
+- *(lists)* Text shown in another locale carries its locale as a suffix
+- *(cms)* The mapping test expects the unstemmed sub-field of localised text
+- *(cms)* Assistant retrieval keeps extended contents out of the engine query
+- *(cms)* Every extender of Content writes and declares the same extension fields
+
+### ⚙️ Miscellaneous Tasks
+
+- *(seeders)* Report each seeding step with one summary line
+- Drop the license-compliance-checker repository
+- *(deps)* Require Laravel 13
+
 ## [1.47.2] - 2026-10-26
 
 ### 🚀 Features
