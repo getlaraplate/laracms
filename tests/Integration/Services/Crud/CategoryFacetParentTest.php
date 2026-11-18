@@ -60,7 +60,8 @@ function root_category(string $name): Category
 {
     $category = Category::factory()->create();
     $category->translations()->where('locale', 'en')->update(['name' => $name]);
-    Category::query()->whereKey($category->id)->update(['parent_id' => null]);
+    $category->parent_id = null;
+    $category->save();
 
     return $category->refresh();
 }
@@ -68,7 +69,8 @@ function root_category(string $name): Category
 function child_category(Category $parent): Category
 {
     $category = Category::factory()->create();
-    Category::query()->whereKey($category->id)->update(['parent_id' => $parent->id]);
+    $category->parent_id = $parent->id;
+    $category->save();
 
     return $category->refresh();
 }

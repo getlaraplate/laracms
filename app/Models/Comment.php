@@ -19,8 +19,8 @@ use Modules\Core\Contracts\INeverVersionedModel;
 use Modules\Core\Enums\CoreTables;
 use Modules\Core\Helpers\LocaleContext;
 use Modules\Core\Models\Concerns\HasApprovals;
+use Modules\Core\Models\Concerns\HasClosureTable;
 use Modules\Core\Models\Concerns\HasTranslations;
-use Modules\Core\Models\Concerns\HasTypedRecursiveRelationships;
 use Modules\Core\Models\Concerns\HidesAttributesFromAnonymous;
 use Modules\Core\Models\User;
 use Modules\Core\Overrides\Model;
@@ -29,7 +29,7 @@ use Override;
 
 final class Comment extends Model implements IHidesAttributesFromAnonymous, INeverVersionedModel
 {
-    use HasApprovals, HasTranslations, HasTypedRecursiveRelationships, HidesAttributesFromAnonymous {
+    use HasApprovals, HasClosureTable, HasTranslations, HidesAttributesFromAnonymous {
         HasApprovals::toArray as private approvalsToArray;
         HasTranslations::toArray as private translationsToArray;
     }

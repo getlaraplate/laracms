@@ -35,6 +35,8 @@ return new class extends Migration
             MigrateUtils::prefixIndex($table, 'parent_id');
         });
 
+        MigrateUtils::closureTable($table_name);
+
         $translations_table = CMSTables::CommentsTranslations->value;
         Schema::create($translations_table, static function (Blueprint $table) use ($translations_table): void {
             $table->id();
@@ -57,6 +59,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        Schema::dropIfExists(CMSTables::CommentsClosure->value);
         Schema::dropIfExists(CMSTables::CommentsTranslations->value);
         Schema::dropIfExists(CMSTables::Comments->value);
     }

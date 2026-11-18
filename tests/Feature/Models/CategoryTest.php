@@ -317,3 +317,29 @@ it('falls back to current node data when no ancestors are present', function ():
         ->and($category->ids)->toBe('10')
         ->and($category->full_name)->toBe('Single');
 });
+
+it('builds ids and full_name in depth order from ancestors loaded from the database', function (int $root_position, int $child_position, int $grandchild_position): void {
+    $locale = config('app.locale');
+    $chain = [];
+
+    foreach (['root' => $root_position, 'child' => $child_position, 'grandchild' => $grandchild_position] as $name => $position) {
+        $category = Category::factory()->create();
+        $category->setTranslation($locale, ['name' => $name, 'slug' => 'chain-' . $name]);
+        $category->parent_id = $chain === [] ? null : end($chain)->id;
+        $category->order_column = $position;
+        $category->save();
+        $chain[] = $category;
+    }
+
+    [$root, $child, $grandchild] = $chain;
+
+    $loaded = Category::query()->withAncestorsForPath()->findOrFail($grandchild->id);
+
+    expect($loaded->full_name)->toBe('root > child > grandchild')
+        ->and($loaded->ids)->toBe(sprintf('%d.%d.%d', $root->id, $child->id, $grandchild->id))
+        ->and($loaded->ancestors->pluck('order_column')->all())->toBe([$child_position, $root_position]);
+})->with([
+    // Sibling positions that do not follow depth. On the first, the scope order sorts the ancestors root first.
+    'root 1, child 3, grandchild 2' => [1, 3, 2],
+    'root 3, child 1, grandchild 2' => [3, 1, 2],
+]);

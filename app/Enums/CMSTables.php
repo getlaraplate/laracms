@@ -31,4 +31,7 @@ enum CMSTables: string
     case Locatables = 'cms_locatables';
     case Relatables = 'cms_relatables';
     case Contributables = 'cms_contributables';
+
+    // closure tables of the hierarchies ({@see \Modules\Core\Helpers\MigrateUtils::closureTable()})
+    case CommentsClosure = 'cms_comments_closure';
 }

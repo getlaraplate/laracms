@@ -163,6 +163,37 @@ it('serializes a content without a recursive ancestor query per category', funct
     expect($recursive)->toBe(0);
 });
 
+it('builds the content URL from the category chain in depth order', function (int $root_position, int $child_position, int $grandchild_position): void {
+    setupCMSEntities([EntityType::Contents, EntityType::Categories]);
+
+    $locale = config('app.locale');
+    $chain = [];
+
+    foreach (['root' => $root_position, 'child' => $child_position, 'grandchild' => $grandchild_position] as $name => $position) {
+        $category = Category::factory()->create();
+        $category->setTranslation($locale, ['name' => 'URL ' . $name, 'slug' => 'url-' . $name]);
+        $category->parent_id = $chain === [] ? null : end($chain)->id;
+        $category->order_column = $position;
+        $category->save();
+        $chain[] = $category;
+    }
+
+    $content = Content::factory()->create();
+    $content->categories()->attach(end($chain)->id);
+
+    $loaded = Content::query()
+        ->withoutGlobalScope(LocaleScope::class)
+        ->with(['categories.translations', 'categories.ancestors.translations'])
+        ->findOrFail($content->id);
+
+    expect($loaded->categories->first()->getPath())->toBe('url-root/url-child/url-grandchild')
+        ->and($loaded->path)->toContain('/url-root/url-child/url-grandchild/');
+})->with([
+    // Sibling positions that do not follow depth. On the first, the scope order sorts the ancestors root first.
+    'root 1, child 3, grandchild 2' => [1, 3, 2],
+    'root 3, child 1, grandchild 2' => [3, 1, 2],
+]);
+
 it('declares filterable indexed relation fields in the content search schema', function (): void {
     $reflection = new ReflectionClass(Content::class);
     $source = file_get_contents((string) $reflection->getFileName());
