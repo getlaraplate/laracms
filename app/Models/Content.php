@@ -28,9 +28,9 @@ use Modules\CMS\Models\Translations\ContentTranslation;
 use Modules\CMS\Observers\ContentObserver;
 use Modules\Core\Approvals\Operation;
 use Modules\Core\Contracts\IDynamicContentModel;
-use Modules\Core\Contracts\IExtendableModel;
 use Modules\Core\Contracts\IDynamicEntityTypable;
 use Modules\Core\Contracts\IEmbeddableModel;
+use Modules\Core\Contracts\IExtendableModel;
 use Modules\Core\Contracts\ILockableModel;
 use Modules\Core\Contracts\IOptimisticLockableModel;
 use Modules\Core\Contracts\IPreloadsAppendedRelations;
@@ -58,8 +58,8 @@ use Modules\Core\Search\Schema\IndexedRelation;
 use Modules\Core\Search\Schema\IndexType;
 use Modules\Core\Search\Support\VectorProfileContext;
 use Modules\Core\Search\Traits\Searchable;
-use Modules\Core\Support\EditorPlainText;
 use Modules\Core\Services\Crud\DTOs\FacetLabelSource;
+use Modules\Core\Support\EditorPlainText;
 use Override;
 use Spatie\EloquentSortable\Sortable;
 use Spatie\MediaLibrary\HasMedia;
@@ -385,33 +385,6 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
         $header = (string) preg_replace('/\s+/u', ' ', implode(' | ', $parts));
 
         return mb_trim(mb_substr(mb_trim($header), 0, self::EMBED_HEADER_LIMIT));
-    }
-
-    /**
-     * The relations indexed in the search document, declared once for the document and the mapping (Core
-     * {@see IndexedRelation}, spec 2026-11-17-extended-entity-search-design.md, XS14). `tags` names are keywords;
-     * `locations` add the address fields, keep `path` unfiltered and are not facets.
-     *
-     * @return list<IndexedRelation>
-     */
-    private static function indexedRelations(): array
-    {
-        $keyword_filter = ['type' => FieldType::Keyword, 'filterable' => true];
-
-        return [
-            new IndexedRelation('contributors'),
-            new IndexedRelation('categories'),
-            new IndexedRelation('tags', properties: ['name' => FieldType::Keyword]),
-            new IndexedRelation('locations', properties: [
-                'path' => FieldType::Keyword,
-                'address' => FieldType::Text,
-                'city' => $keyword_filter,
-                'province' => $keyword_filter,
-                'country' => $keyword_filter,
-                'postcode' => $keyword_filter,
-                'zone' => $keyword_filter,
-            ], indexTypes: [IndexType::Searchable, IndexType::Filterable]),
-        ];
     }
 
     /**
@@ -771,6 +744,33 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
                 return ReadingStatistics::fromBlocks($blocks);
             },
         );
+    }
+
+    /**
+     * The relations indexed in the search document, declared once for the document and the mapping (Core
+     * {@see IndexedRelation}, spec 2026-11-17-extended-entity-search-design.md, XS14). `tags` names are keywords;
+     * `locations` add the address fields, keep `path` unfiltered and are not facets.
+     *
+     * @return list<IndexedRelation>
+     */
+    private static function indexedRelations(): array
+    {
+        $keyword_filter = ['type' => FieldType::Keyword, 'filterable' => true];
+
+        return [
+            new IndexedRelation('contributors'),
+            new IndexedRelation('categories'),
+            new IndexedRelation('tags', properties: ['name' => FieldType::Keyword]),
+            new IndexedRelation('locations', properties: [
+                'path' => FieldType::Keyword,
+                'address' => FieldType::Text,
+                'city' => $keyword_filter,
+                'province' => $keyword_filter,
+                'country' => $keyword_filter,
+                'postcode' => $keyword_filter,
+                'zone' => $keyword_filter,
+            ], indexTypes: [IndexType::Searchable, IndexType::Filterable]),
+        ];
     }
 
     /**
