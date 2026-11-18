@@ -500,7 +500,7 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
         $extension = $this->extensionSearchDocument();
 
         if ($extension !== null) {
-            $document['extension'] = $extension;
+            $document[self::EXTENSION_FIELD] = $extension;
         }
 
         return $document;
@@ -569,7 +569,7 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
         $extension_properties = $this->extensionSearchMapping();
 
         if ($extension_properties !== []) {
-            $schema->addField(new FieldDefinition('extension', FieldType::Object, [IndexType::Searchable, IndexType::Filterable], ['properties' => $extension_properties]));
+            $schema->addField(new FieldDefinition(self::EXTENSION_FIELD, FieldType::Object, [IndexType::Searchable, IndexType::Filterable], ['properties' => $extension_properties]));
         }
 
         return $this->getSearchMappingTrait($schema);

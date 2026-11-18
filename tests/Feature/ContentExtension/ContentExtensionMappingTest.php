@@ -8,6 +8,7 @@ use Modules\CMS\Models\Content;
 use Modules\CMS\Services\ContentExtenderRegistry;
 use Modules\CMS\Tests\Stubs\ContentExtension\StubExtendedThing;
 use Modules\CMS\Tests\TestCase;
+use Modules\Core\Search\Extensions\ExtensionDocumentCheck;
 use Modules\Core\Search\Extensions\ExtensionRegistry;
 use Modules\Core\Search\Schema\FieldType;
 
@@ -49,4 +50,16 @@ it('composes the extension mapping with every extender registered in the applica
     $mapping = (new Content())->extensionSearchMapping();
 
     expect($mapping === [] || $mapping['type'] === ['type' => FieldType::Keyword, 'filterable' => true])->toBeTrue();
+});
+
+it('writes and declares the same extension fields for every extender registered in the application', function (): void {
+    // ExtensionDocumentCheck of Core: a key an extender writes but does not declare is indexed with a guessed type and
+    // cannot be filtered (XS10); a key declared but not written is never filled; `type` is the host's alias.
+    $violations = [];
+
+    foreach ((new Content())->extenders() as $extender_class) {
+        $violations = [...$violations, ...ExtensionDocumentCheck::violations($extender_class)];
+    }
+
+    expect($violations)->toBe([]);
 });
