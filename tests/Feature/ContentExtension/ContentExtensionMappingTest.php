@@ -5,7 +5,6 @@ declare(strict_types=1);
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Modules\CMS\Models\Content;
-use Modules\CMS\Services\ContentExtenderRegistry;
 use Modules\CMS\Tests\Stubs\ContentExtension\StubExtendedThing;
 use Modules\CMS\Tests\TestCase;
 use Modules\Core\Search\Extensions\ExtensionDocumentCheck;
@@ -21,7 +20,7 @@ beforeEach(function (): void {
 });
 
 it('composes the extension mapping from registered extenders', function (): void {
-    app(ContentExtenderRegistry::class)->register('cms.stub_extended', StubExtendedThing::class);
+    app(ExtensionRegistry::class)->register(Content::class, 'cms.stub_extended', StubExtendedThing::class);
 
     $mapping = json_encode((new Content())->getSearchMapping());
 
@@ -35,7 +34,6 @@ it('maps extended_type but no extension object when no extender is registered', 
     // Isolate from any production extender registered at boot (e.g. shop.product) so this exercises
     // the genuinely-empty-registry case.
     app()->instance(ExtensionRegistry::class, new ExtensionRegistry());
-    app()->instance(ContentExtenderRegistry::class, new ContentExtenderRegistry(app(ExtensionRegistry::class)));
 
     $mapping = json_encode((new Content())->getSearchMapping());
 

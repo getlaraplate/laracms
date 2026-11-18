@@ -22,9 +22,9 @@ with the `Modules\Core\Models\Concerns\HasExtensions` trait and declares only it
 - **Dedicated registry.** Core's `Search\Extensions\ExtensionRegistry` maps alias → extender class,
   per host: `register(Content::class, 'shop.product', Product::class)`. It is code, keyed by the stable
   alias, populated at boot by each extender's service provider — never a table and never Laravel's
-  global morph map. With no extender registered it is empty and the whole seam is a no-op. The CMS
-  `Services\ContentExtenderRegistry` and `Services\ContentExtensionResolver` are deprecated delegates over
-  the Core registry and resolver, kept until no module calls them.
+  global morph map. With no extender registered it is empty and the whole seam is a no-op. CMS has no
+  registry or resolver of its own: the former `Services\ContentExtenderRegistry` and
+  `Services\ContentExtensionResolver` were removed once every extender registered in Core.
 - **Default hide.** Core's `Search\Extensions\HidesExtendedRows` global scope adds `WHERE extended_type IS
   NULL` to every default `Content` read. Opt back in with `Content::withExtended()` or
   `queryWithExtensions()`, which remove **only** that scope (soft-delete, validity and any other global

@@ -8,12 +8,17 @@ use Illuminate\Support\Facades\Schema;
 use Modules\CMS\Casts\EntityType;
 use Modules\CMS\Enums\CMSTables;
 use Modules\CMS\Models\Content;
-use Modules\CMS\Services\ContentExtenderRegistry;
-use Modules\CMS\Services\ContentExtensionResolver;
 use Modules\CMS\Tests\Stubs\ContentExtension\StubExtendedThing;
 use Modules\CMS\Tests\TestCase;
+use Modules\Core\Search\Extensions\ExtensionRegistry;
 
 uses(TestCase::class, RefreshDatabase::class);
+
+/*
+ * A page of contents upcast through Core (`Content::upcastExtensions()`, Core `ExtensionResolver`), with an extender
+ * registered for `Content` in Core's `ExtensionRegistry`. Moved from the tests of the CMS `ContentExtensionResolver`,
+ * which delegated to Core and was removed.
+ */
 
 function makeStubExtender(string $brand): StubExtendedThing
 {
@@ -36,7 +41,7 @@ beforeEach(function (): void {
         $table->timestamps();
     });
 
-    app(ContentExtenderRegistry::class)->register('cms.stub_extended', StubExtendedThing::class);
+    app(ExtensionRegistry::class)->register(Content::class, 'cms.stub_extended', StubExtendedThing::class);
 });
 
 it('swaps extended contents for their extenders and keeps plain contents', function (): void {
@@ -45,7 +50,7 @@ it('swaps extended contents for their extenders and keeps plain contents', funct
     $plain = Content::factory()->create();
 
     $page = Content::withExtended()->orderBy('id')->get();
-    $resolved = app(ContentExtensionResolver::class)->resolve($page);
+    $resolved = (new Content())->upcastExtensions($page);
 
     expect($resolved)->toHaveCount(3);
 
@@ -64,7 +69,7 @@ it('attaches the content and resolves an entity-scoped page in one extender quer
     $page = Content::withExtended()->get();
 
     DB::connection()->enableQueryLog();
-    $resolved = app(ContentExtensionResolver::class)->resolve($page);
+    $resolved = (new Content())->upcastExtensions($page);
     $extenderQueries = count(DB::connection()->getQueryLog());
     DB::connection()->disableQueryLog();
 
@@ -85,7 +90,7 @@ it('fails loud on an unregistered alias', function (): void {
 
     $page = Content::withExtended()->get();
 
-    app(ContentExtensionResolver::class)->resolve($page);
+    (new Content())->upcastExtensions($page);
 })->throws(InvalidArgumentException::class);
 
 it('fails loud when a registered alias has no extender row', function (): void {
@@ -94,5 +99,5 @@ it('fails loud when a registered alias has no extender row', function (): void {
 
     $page = Content::withExtended()->get();
 
-    app(ContentExtensionResolver::class)->resolve($page);
+    (new Content())->upcastExtensions($page);
 })->throws(RuntimeException::class);
