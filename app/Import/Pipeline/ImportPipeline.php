@@ -17,7 +17,12 @@ use Modules\CMS\Import\Upserters\ContentUpserter;
 use Modules\CMS\Import\Upserters\ContributorUpserter;
 use Modules\CMS\Import\Upserters\LocationUpserter;
 use Modules\CMS\Import\Upserters\TagUpserter;
+use Modules\CMS\Models\Category;
 use Modules\CMS\Models\Content;
+use Modules\CMS\Models\Contributor;
+use Modules\CMS\Models\Location;
+use Modules\CMS\Models\Tag;
+use Modules\Core\Cache\Labels\CacheLabelInvalidator;
 use Modules\Core\Import\Support\ImportFingerprint;
 use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
@@ -34,6 +39,7 @@ final class ImportPipeline
         private readonly ContentUpserter $content_upserter,
         private readonly ContributorDefaults $contributor_defaults,
         private readonly ImportIdMap $id_map,
+        private readonly CacheLabelInvalidator $cache_label_invalidator,
     ) {}
 
     public function import(
@@ -55,6 +61,8 @@ final class ImportPipeline
             $this->resetState();
 
             throw $exception;
+        } finally {
+            $this->flushWrittenTables($root_model);
         }
     }
 
@@ -63,6 +71,32 @@ final class ImportPipeline
         $this->id_map->reset();
         $this->contributor_defaults->reset();
         $this->preset_provisioner->reset();
+    }
+
+    /**
+     * The import writes through the query builder and raw pivot rows, which fire no model event, so the table
+     * label of every table a run can write is flushed once, after the run. A failed run is flushed too: the
+     * rollback leaves nothing behind, and a flush that was not needed only costs a cache miss.
+     */
+    private function flushWrittenTables(Model $root_model): void
+    {
+        $content = new Content;
+        $tables = [
+            $content->getTable(),
+            (new Category)->getTable(),
+            (new Contributor)->getTable(),
+            (new Tag)->getTable(),
+            (new Location)->getTable(),
+            $content->categories()->getTable(),
+            $content->contributors()->getTable(),
+            $content->tags()->getTable(),
+            $content->locations()->getTable(),
+            $content->related()->getTable(),
+        ];
+
+        foreach (array_unique($tables) as $table) {
+            $this->cache_label_invalidator->flushTable($table, $root_model);
+        }
     }
 
     private function importGraph(
