@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Schema;
 use Modules\CMS\Casts\EntityType;
 use Modules\CMS\Models\Content;
-use Modules\CMS\Services\ContentExtenderRegistry;
 use Modules\CMS\Tests\Stubs\ContentExtension\StubExtendedThing;
 use Modules\CMS\Tests\TestCase;
+use Modules\Core\Search\Extensions\ExtensionRegistry;
 use Modules\Core\Search\Support\DefaultSearchFilters;
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -36,7 +36,7 @@ beforeEach(function (): void {
         $table->timestamps();
     });
 
-    app(ContentExtenderRegistry::class)->register('cms.stub_extended', StubExtendedThing::class);
+    app(ExtensionRegistry::class)->register(Content::class, 'cms.stub_extended', StubExtendedThing::class);
 });
 
 it('excludes extended contents from the generic search through the host contract', function (): void {

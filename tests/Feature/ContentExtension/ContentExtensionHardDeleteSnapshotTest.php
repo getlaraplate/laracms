@@ -6,11 +6,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Modules\CMS\Casts\EntityType;
 use Modules\CMS\Models\Content;
-use Modules\CMS\Services\ContentExtenderRegistry;
 use Modules\CMS\Tests\Stubs\ContentExtension\StubVersionedExtendedThing;
 use Modules\CMS\Tests\TestCase;
 use Modules\Core\Enums\VersionChangeType;
 use Modules\Core\Models\VersionSet;
+use Modules\Core\Search\Extensions\ExtensionRegistry;
 
 uses(TestCase::class, RefreshDatabase::class);
 
@@ -29,7 +29,7 @@ beforeEach(function (): void {
         $table->timestamps();
     });
 
-    app(ContentExtenderRegistry::class)->register('cms.stub_versioned', StubVersionedExtendedThing::class);
+    app(ExtensionRegistry::class)->register(Content::class, 'cms.stub_versioned', StubVersionedExtendedThing::class);
 });
 
 it('writes the snapshot of the extender deleted with its content in a set of its own', function (): void {

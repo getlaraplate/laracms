@@ -6,10 +6,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Modules\CMS\Casts\EntityType;
 use Modules\CMS\Models\Content;
-use Modules\CMS\Services\ContentExtenderRegistry;
 use Modules\CMS\Tests\Stubs\ContentExtension\StubExtendedThing;
 use Modules\CMS\Tests\Stubs\ContentExtension\StubOptionalExtendedThing;
 use Modules\CMS\Tests\TestCase;
+use Modules\Core\Search\Extensions\ExtensionRegistry;
 
 uses(TestCase::class, RefreshDatabase::class);
 
@@ -51,9 +51,9 @@ beforeEach(function (): void {
         $table->timestamps();
     });
 
-    $registry = app(ContentExtenderRegistry::class);
-    $registry->register('cms.stub_extended', StubExtendedThing::class);
-    $registry->register('cms.stub_optional', StubOptionalExtendedThing::class);
+    $registry = app(ExtensionRegistry::class);
+    $registry->register(Content::class, 'cms.stub_extended', StubExtendedThing::class);
+    $registry->register(Content::class, 'cms.stub_optional', StubOptionalExtendedThing::class);
 });
 
 it('cascades an extender soft-delete to its content', function (): void {
