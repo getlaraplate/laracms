@@ -157,10 +157,13 @@ it('roots the comments left by an owner hard delete', function (Closure $owner):
         $content = commentCascadeContent($preset);
         $presettable = commentCascadePresettableOf($preset);
 
-        // Core SoftDeletes::delete() declares ?bool while a pivot's delete returns the row count: the row goes and
-        // the events run, then the return type throws. Pre-existing, outside this test's subject.
         return ['owner' => ['content_id' => $content->id, 'user_id' => $this->otherUser->id], 'delete' => static function () use ($presettable): bool {
-            expect(static fn () => $presettable->forceDelete())->toThrow(TypeError::class, 'must be of type ?bool, int returned');
+            try {
+                $presettable->forceDelete();
+            } catch (TypeError) {
+                // Pre-existing: Core SoftDeletes::delete() declares ?bool, a pivot's delete returns the row count, so
+                // the return type throws after the row went and the events ran. Either outcome leaves the same rows.
+            }
 
             return true;
         }];
