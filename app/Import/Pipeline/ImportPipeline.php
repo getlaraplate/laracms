@@ -74,9 +74,11 @@ final class ImportPipeline
     }
 
     /**
-     * The import writes through the query builder and raw pivot rows, which fire no model event, so the table
-     * label of every table a run can write is flushed once, after the run. A failed run is flushed too: the
-     * rollback leaves nothing behind, and a flush that was not needed only costs a cache miss.
+     * The import writes through Eloquent, whose model events and relation overrides already flush the labels of each
+     * record and pivot it writes. This is a defensive guarantee on top of them: every table a run can write is flushed
+     * whole (its table label and every row of it), in a single flush call, after the run, so a write path that ever
+     * bypasses the events is still covered. A failed run is flushed too: a flush that was not needed only costs a
+     * cache miss.
      */
     private function flushWrittenTables(Model $root_model): void
     {
@@ -94,9 +96,7 @@ final class ImportPipeline
             $content->related()->getTable(),
         ];
 
-        foreach (array_unique($tables) as $table) {
-            $this->cache_label_invalidator->flushTable($table, $root_model);
-        }
+        $this->cache_label_invalidator->flushTables(array_values(array_unique($tables)), $root_model);
     }
 
     private function importGraph(

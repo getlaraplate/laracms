@@ -60,7 +60,7 @@ The command implementation is deliberately thin: `Modules\CMS\Console\ImportComm
 
 ## Cache labels
 
-An import writes through the query builder and raw pivot rows, which fire no model event. At the end of a run, successful or not, the pipeline flushes the `table:` cache labels of the tables it can write (contents, categories, contributors, tags, locations and their pivots), once per table, so cached CRUD responses that depend on them are recomputed. See `Modules/Core/docs/rag/CACHE_LABELS_DEVELOPER.md`.
+An import writes through Eloquent: the model events and the relation overrides already flush the cache labels of every record and pivot row it writes. On top of that, as a defensive guarantee, at the end of a run, successful or not, the pipeline flushes every table it can write (contents, categories, contributors, tags, locations and their pivots) whole, table label and every row, in a single flush call, so a write path that ever bypasses the model events is still covered. See `Modules/Core/docs/rag/CACHE_LABELS_DEVELOPER.md`.
 
 ## Import is not synchronization
 

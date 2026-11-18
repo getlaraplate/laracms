@@ -32,7 +32,7 @@ beforeEach(function (): void {
     resolve(ImportIdMap::class)->reset();
 });
 
-it('flushes the table label of every table a run wrote once, after the run', function (): void {
+it('flushes every table a run can write in one flush call, after the run', function (): void {
     $index = new RecordingLabelIndex;
     $this->app->instance(ICacheLabelIndex::class, $index);
     $this->app->forgetInstance(ImportPipeline::class);
@@ -40,7 +40,7 @@ it('flushes the table label of every table a run wrote once, after the run', fun
     resolve(ImportPipeline::class)->import(buildImportGraphFromFixture());
 
     $content = new Content;
-    $expected_tables = [
+    $expected_tables = array_values(array_unique([
         $content->getTable(),
         (new Category)->getTable(),
         (new Contributor)->getTable(),
@@ -51,11 +51,13 @@ it('flushes the table label of every table a run wrote once, after the run', fun
         $content->tags()->getTable(),
         $content->locations()->getTable(),
         $content->related()->getTable(),
-    ];
-    $expected = array_map(CacheLabel::table(...), array_values(array_unique($expected_tables)));
-    $tail = array_slice($index->flushes, -count($expected));
-    $tail_labels = array_map(static fn (array $labels): string => $labels[0], $tail);
+    ]));
+    $expected = [];
 
-    expect(array_map('count', $tail))->each->toBe(1)
-        ->and($tail_labels)->toEqualCanonicalizing($expected);
+    foreach ($expected_tables as $table) {
+        $expected[] = CacheLabel::table($table);
+        $expected[] = CacheLabel::rows($table);
+    }
+
+    expect(end($index->flushes))->toEqualCanonicalizing($expected);
 });
