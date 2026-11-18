@@ -148,6 +148,15 @@ trait ExtendsContentTrait
     }
 
     /**
+     * The entity whose presets shape the extender's contents, so a dynamic field named like one of its own columns
+     * is refused there (XS17). Null by default: an extender with its own content entity returns its type.
+     */
+    public function extensionEntityType(): ?string
+    {
+        return null;
+    }
+
+    /**
      * The columns of the extender's own table. An extender that keeps an explicit list of its columns (the keys
      * its merge routes to itself) returns that list instead.
      *

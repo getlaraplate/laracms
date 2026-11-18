@@ -76,4 +76,10 @@ final class FakeContentExtender implements ExtendsContent
     {
         return ['id', 'content_id'];
     }
+
+    #[Override]
+    public function extensionEntityType(): ?string
+    {
+        return null;
+    }
 }
