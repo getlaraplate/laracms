@@ -32,7 +32,7 @@ final class ExternalReferenceLocator
      *
      * @var array<class-string<Model>, array{translation_model: class-string<Model>, foreign_key: string}>
      */
-    private const IMPORT_SLUG_TARGETS = [
+    private const array IMPORT_SLUG_TARGETS = [
         Content::class => [
             'translation_model' => ContentTranslation::class,
             'foreign_key' => 'content_id',
