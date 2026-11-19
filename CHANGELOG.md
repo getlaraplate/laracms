@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.49.0] - 2026-11-19
+
+### 🚀 Features
+
+- *(import)* Flush cache labels of the tables an import wrote
+
+### 🚜 Refactor
+
+- *(cms)* Reorder and reintroduce indexedRelations method for clarity
+
+### 📚 Documentation
+
+- *(cms)* The validity window works on Typesense too
+- *(import)* The import flushes cache labels of its tables
+
+### ⚡ Performance
+
+- *(import)* Flush the written tables in one call
+
+### 🎨 Styling
+
+- *(cms)* Declare the types pest type-coverage was missing
+
 ## [1.48.0] - 2026-11-18
 
 ### 🚀 Features
