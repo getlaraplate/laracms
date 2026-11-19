@@ -102,7 +102,8 @@ Extended contents are **indexed** but kept out of the **generic** content search
 path and engine: `Content` declares no default search filter for it. The engine never returns an extended
 content for a generic search, so a page is not cut short when the hits are reloaded. On Elasticsearch the
 condition is `must_not exists`; on Typesense a null `extended_type` is indexed as a placeholder value (Core
-`TypesenseEngine::NULL_PLACEHOLDER`), so a Typesense collection indexed before that needs a reindex.
+`TypesenseEngine::NULL_PLACEHOLDER`), and the validity window of the public ACLs works on the dates Typesense indexes
+as timestamps (see `Modules/Core/docs/rag/MODULE.md`). A Typesense collection indexed before that needs a rebuild.
 
 ## Searching and listing extenders
 
