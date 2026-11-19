@@ -256,6 +256,10 @@ it('measures the baseline of the role, category and comment hierarchies', functi
     $content = createMinimalTestContentForComments();
     $comments = hierarchyBenchmarkSeedComments($content->id, $user->id);
 
+    // The seeds above are bulk writes: they bypass the model events, so the closure tables are rebuilt.
+    Category::rebuildClosure();
+    Comment::rebuildClosure();
+
     // A chain of five roles, a permission at each level, an ACL on every other one, the user on the leaf.
     $permissions = [];
     $parent_id = null;
