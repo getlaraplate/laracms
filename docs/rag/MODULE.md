@@ -114,6 +114,10 @@ flowchart LR
   EntityRow -->|entity_id| Category
 ```
 
+#### Category paths and comment threads (closure tables)
+
+`Category` (a `Core\Models\Taxonomy`, table `core_taxonomies`) and `Comment` (`cms_comments`) are hierarchies on closure tables (`core_taxonomies_closure`, `cms_comments_closure`) through Core's `HasClosureTable`; the category `path` and the tree payload of `GET /api/v1/tree/cms/categories` read ancestors and descendants from them with a constant number of queries. The closure follows model events: a bulk write to either table (an import, a seeder using `insert()`) must call `Category::rebuildClosure()` or `Comment::rebuildClosure()` afterwards. A user's, content's or entity's hard delete removes comments and taxonomies by cascading foreign keys; `CMSServiceProvider` and `CoreServiceProvider` register those cascades so the surviving replies and sub-categories become roots with their subtrees intact. Details: Core `docs/rag/HIERARCHIES_DEVELOPER.md`.
+
 #### Content relationships and morph pivots
 
 `Content` is the primary content aggregate for `EntityType::CONTENTS`. It links contributors, categories, locations, related contents, and tags via dedicated pivots: `contributables`, `categorizables` (FK on `taxonomy_id`), `locatables`, `relatables`, and the polymorphic `taggables` (used by `Content`, `Contributor`, `Category`, `Location` through `HasTags`). Translations live in `contents_translations` keyed by `content_id` + `locale` and store the user-facing fields `title`, `slug`, `components`. `Searchable` builds a Typesense schema that flattens contributors/categories/tags/locations and emits per-locale `title_{locale}` and `slug_{locale}` keys. `Content` also implements the Core contract `IProvidesRerankerText`: `rerankerTexts()` returns, for the keys of the hits to rerank, the title and the text components of the translation in the language of the search (cut to 2000 characters), because a search hit carries only the content's own columns and the text lives in `contents_translations`.
