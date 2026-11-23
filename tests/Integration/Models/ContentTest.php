@@ -123,9 +123,9 @@ it('toSearchableWith returns all required relations for indexing', function (): 
     expect($relations)->toContain('contributors')
         ->toContain('categories')
         ->toContain('categories.translations')
-        // Ancestors (with their translations) back the hierarchical `path` field,
-        // eager-loaded so serialization does not run a recursive query per category.
-        ->toContain('categories.ancestors.translations')
+        // The hierarchical `path` of the categories is given in one batch by makeSearchableUsing(),
+        // not by an eager `ancestors` load that hydrates one ancestor per category and ancestor.
+        ->not->toContain('categories.ancestors.translations')
         ->toContain('tags')
         ->toContain('locations')
         ->toContain('translations')

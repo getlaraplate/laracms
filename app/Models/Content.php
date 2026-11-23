@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
+use Illuminate\Support\Collection as BaseCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\CMS\Casts\EntityType;
@@ -72,7 +73,7 @@ use Spatie\MediaLibrary\HasMedia;
  * @phpstan-use Searchable<Content>
  */
 #[ObservedBy(ContentObserver::class)]
-final class Content extends Model implements HasMedia, IEmbeddableModel, IDynamicContentModel, ILockableModel, IOptimisticLockableModel, IPreloadsAppendedRelations, IProvidesRerankerText, ISearchableModel, IValidatableModel, ProvidesDefaultSearchFilters, ProvidesFacetLabelSources, ProvidesSyncableRelations, Sortable, Taggable
+final class Content extends Model implements HasMedia, IDynamicContentModel, IEmbeddableModel, ILockableModel, IOptimisticLockableModel, IPreloadsAppendedRelations, IProvidesRerankerText, ISearchableModel, IValidatableModel, ProvidesDefaultSearchFilters, ProvidesFacetLabelSources, ProvidesSyncableRelations, Sortable, Taggable
 {
     // region Traits
     use HasApprovals {
@@ -94,6 +95,7 @@ final class Content extends Model implements HasMedia, IEmbeddableModel, IDynami
     use Searchable {
         Searchable::toSearchableArray as private toSearchableArrayTrait;
         Searchable::getSearchMapping as private getSearchMappingTrait;
+        Searchable::makeSearchableUsing as private makeSearchableUsingTrait;
     }
     use SortableTrait {
         SortableTrait::scopeOrdered as private scopePriorityOrdered;
@@ -399,12 +401,9 @@ final class Content extends Model implements HasMedia, IEmbeddableModel, IDynami
         return [
             'contributors',
             'categories',
-            // Categories are hierarchical: the `path` field serialized below walks
-            // each category's ancestors (translated slugs). Eager-load them here so
-            // building the document reads the loaded chain instead of firing one
-            // recursive-ancestor query per category per content.
+            // The `path` of each category, which walks its ancestors' translated
+            // slugs, is given in one batch by makeSearchableUsing() below.
             'categories.translations',
-            'categories.ancestors.translations',
             'tags',
             'locations',
             'references',
@@ -412,6 +411,25 @@ final class Content extends Model implements HasMedia, IEmbeddableModel, IDynami
             'presettable.entity',
             'presettable.preset',
         ];
+    }
+
+    /**
+     * Load what toSearchableArray() reads for the chunk, then give the categories of every content their `path` in
+     * one batch ({@see Category::assignPaths()}): the closure rows of all of them in one query and their distinct
+     * ancestors once, instead of one ancestor model per category and ancestor.
+     *
+     * @param  BaseCollection<int, covariant Model>  $models
+     * @return BaseCollection<int, covariant Model>
+     */
+    public function makeSearchableUsing(BaseCollection $models): BaseCollection
+    {
+        $models = $this->makeSearchableUsingTrait($models);
+
+        Category::assignPaths($models->flatMap(
+            static fn (mixed $content): iterable => $content instanceof self && $content->relationLoaded('categories') ? $content->categories : [],
+        ));
+
+        return $models;
     }
 
     /**
