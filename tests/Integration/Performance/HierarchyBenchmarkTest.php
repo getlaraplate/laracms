@@ -309,18 +309,14 @@ it('measures the baseline of the role, category and comment hierarchies', functi
         $resolver->getEffectiveAcls($role_user, $permissions[1]);
     });
 
-    // Case 2: a page of 50 contents with the URL of their categories.
-    $record('page of 50 contents + category urls', static function (): void {
-        $page = Content::query()
-            ->with(['categories.translations', 'categories.ancestors.translations'])
-            ->orderBy('id')
-            ->limit(50)
-            ->get();
+    // Case 2: a chunk of 50 contents prepared for the search engine as the indexer prepares it: the import query,
+    // makeSearchableUsing() (the relations the document reads, the category paths), then each document.
+    $record('50 contents indexed with category paths', static function (): void {
+        $indexer = new Content;
+        $chunk = $indexer->makeAllSearchableUsing(Content::query())->orderBy('id')->limit(50)->get();
 
-        foreach ($page as $item) {
-            foreach ($item->categories as $category) {
-                $category->path;
-            }
+        foreach ($indexer->makeSearchableUsing($chunk) as $item) {
+            $item->toSearchableArray();
         }
     });
 
