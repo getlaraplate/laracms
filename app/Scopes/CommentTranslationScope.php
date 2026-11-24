@@ -8,15 +8,18 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Eloquent\Scope;
+use Modules\CMS\Models\Comment;
 use Modules\Core\Helpers\LocaleContext;
 
 /**
  * List comments with at least one translation; eager-load resolved body for current locale or original.
+ *
+ * @implements Scope<Comment>
  */
 final class CommentTranslationScope implements Scope
 {
     /**
-     * @param  Builder<Model>  $builder
+     * @param  Builder<covariant Comment>  $builder
      */
     public function apply(Builder $builder, Model $model): void
     {

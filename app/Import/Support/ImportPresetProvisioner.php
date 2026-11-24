@@ -108,7 +108,14 @@ final class ImportPresetProvisioner
             return $active;
         }
 
-        return $this->preset_versioning_service->createVersion($preset);
+        $version = $this->preset_versioning_service->createVersion($preset);
+
+        // The service builds the presettable of the preset's own module, a CMS one here.
+        if (! $version instanceof CmsPresettable) {
+            throw new RuntimeException('The CMS preset was versioned as ' . $version::class . ', not as a CMS presettable.');
+        }
+
+        return $version;
     }
 
     /**

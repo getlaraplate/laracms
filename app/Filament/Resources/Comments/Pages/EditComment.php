@@ -51,7 +51,7 @@ final class EditComment extends EditRecord
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         /** @var Comment $record */
-        $record->body = (string) ($data['body'] ?? '');
+        $record->body = is_string($data['body'] ?? null) ? $data['body'] : '';
         $this->saveReportingApprovalOutcome($record);
 
         return $record;

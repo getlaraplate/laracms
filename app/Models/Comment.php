@@ -155,7 +155,8 @@ final class Comment extends Model implements IHidesAttributesFromAnonymous, INev
     {
         $user_id = auth()->id();
 
-        if ($this->user_id === null && $user_id !== null) {
+        // Read through getAttribute(): before the first save the column holds no value yet.
+        if ($this->getAttribute('user_id') === null && $user_id !== null) {
             $this->user_id = (int) $user_id;
         }
     }
