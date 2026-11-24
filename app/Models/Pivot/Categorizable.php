@@ -11,6 +11,12 @@ use Modules\Core\Models\Concerns\TouchesOwnerOnChange;
 use Modules\Core\Overrides\Pivot;
 use Override;
 
+/**
+ * @property int $content_id The content that the categorizable belongs to
+ * @property int $taxonomy_id The category that the categorizable belongs to
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
+ */
 final class Categorizable extends Pivot
 {
     use TouchesOwnerOnChange;

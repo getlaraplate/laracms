@@ -16,6 +16,7 @@ use Modules\CMS\Models\Pivot\Contributable;
 use Modules\Core\Contracts\IDynamicEntityTypable;
 use Modules\Core\Contracts\IHidesAttributesFromAnonymous;
 use Modules\Core\Contracts\IPreloadsAppendedRelations;
+use Modules\Core\Contracts\ITranslatableModel;
 use Modules\Core\Models\Concerns\HasTranslatedDynamicContents;
 use Modules\Core\Models\Concerns\HidesAttributesFromAnonymous;
 use Modules\Core\Models\User;
@@ -26,8 +27,21 @@ use Spatie\MediaLibrary\HasMedia as IMediable;
 /**
  * @phpstan-use HasMultimedia<Contributor>
  * @phpstan-use HasTranslatedDynamicContents<Contributor>
+ *
+ * @property int $id
+ * @property int|null $user_id The user that the contributor belongs to
+ * @property int $entity_id
+ * @property int $presettable_id
+ * @property string $name The name of the contributor
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
+ * @property \Carbon\CarbonImmutable|null $deleted_at
+ * @property bool|null $is_deleted Whether the entity is deleted
+ * @property array<array-key, mixed>|null $shared_components The shared dynamic components of the contributor
+ * @property string|null $slug
+ * @property array<array-key, mixed>|null $components
  */
-final class Contributor extends Model implements IHidesAttributesFromAnonymous, IMediable, IPreloadsAppendedRelations, Taggable
+final class Contributor extends Model implements IHidesAttributesFromAnonymous, IMediable, IPreloadsAppendedRelations, ITranslatableModel, Taggable
 {
     // region Traits
     use HasMultimedia;

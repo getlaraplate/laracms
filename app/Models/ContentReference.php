@@ -14,6 +14,17 @@ use Modules\Core\Overrides\Model;
 use Override;
 use Spatie\EloquentSortable\Sortable;
 
+/**
+ * @property int $id
+ * @property int $content_id
+ * @property string $label Human-readable name of the source
+ * @property string|null $url Optional link to the source
+ * @property int $order_column Display order of the reference
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
+ * @property \Carbon\CarbonImmutable|null $deleted_at
+ * @property bool|null $is_deleted Whether the entity is deleted
+ */
 final class ContentReference extends Model implements IsPartOfParent, Sortable
 {
     use SortableTrait;

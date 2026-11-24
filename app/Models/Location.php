@@ -26,6 +26,19 @@ use Modules\Core\Search\Schema\IndexType;
 use Modules\Core\Search\Traits\Searchable;
 use Override;
 
+/**
+ * @property int $id
+ * @property int|null $place_id
+ * @property string $name The friendly name of the location
+ * @property string|null $slug The slug of the location
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
+ * @property \Carbon\CarbonImmutable|null $deleted_at
+ * @property bool|null $is_deleted Whether the entity is deleted
+ * @property string|null $locked_at The date and time when the entity was locked
+ * @property int|null $locked_user_id The user who locked the entity
+ * @property string|null $locked_until The moment the lock expires; null means it never does
+ */
 #[ObservedBy(LocationObserver::class)]
 final class Location extends Model implements ISearchableModel, Taggable
 {

@@ -11,6 +11,12 @@ use Modules\Core\Models\Concerns\TouchesOwnerOnChange;
 use Modules\Core\Overrides\Pivot;
 use Override;
 
+/**
+ * @property int $content_id
+ * @property int $contributor_id
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
+ */
 final class Contributable extends Pivot
 {
     use TouchesOwnerOnChange;
