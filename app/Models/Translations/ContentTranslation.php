@@ -16,6 +16,18 @@ use Modules\Core\Overrides\Model;
 use Modules\Core\Services\Translation\Definitions\ITranslated;
 use Override;
 
+/**
+ * @property int $id
+ * @property int $content_id
+ * @property string $locale The locale of the translation
+ * @property string $title The translated title of the content
+ * @property string|null $slug The translated slug of the content
+ * @property AiAssistance $ai_assistance How AI assisted this locale-specific version
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
+ * @property \Carbon\CarbonImmutable|null $deleted_at
+ * @property bool|null $is_deleted Whether the entity is deleted
+ */
 final class ContentTranslation extends Model implements IsPartOfParent, ITranslated
 {
     use HasSlug;

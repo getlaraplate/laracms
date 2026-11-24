@@ -21,6 +21,11 @@ use Override;
  * @property string $locale
  * @property string $name
  * @property string $slug
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
+ * @property \Carbon\CarbonImmutable|null $deleted_at
+ * @property bool|null $is_deleted Whether the entity is deleted
+ * @property int|null $is_live 1 on a live row, null on a deleted one, for unique keys over live rows
  */
 final class TagTranslation extends Model implements IsPartOfParent, ITranslated
 {

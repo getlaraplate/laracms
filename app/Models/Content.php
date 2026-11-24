@@ -69,6 +69,22 @@ use Spatie\MediaLibrary\HasMedia;
  * @phpstan-use HasTranslatedDynamicContents<Content>
  * @phpstan-use HasValidity<Content>
  * @phpstan-use Searchable<Content>
+ *
+ * @property int $id
+ * @property int $entity_id
+ * @property int $presettable_id
+ * @property string|null $extended_type Morph alias of the module extending this content (ContentExtenderRegistry); null means a normal content
+ * @property int $order_column The order of the content
+ * @property int $lock_version The optimistic lock version of the content
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
+ * @property \Carbon\CarbonImmutable|null $deleted_at
+ * @property bool|null $is_deleted Whether the entity is deleted
+ * @property \Carbon\CarbonImmutable|null $locked_at The date and time when the entity was locked
+ * @property int|null $locked_user_id The user who locked the entity
+ * @property \Carbon\CarbonImmutable|null $locked_until The moment the lock expires; null means it never does
+ * @property \Carbon\CarbonImmutable|null $valid_from
+ * @property \Carbon\CarbonImmutable|null $valid_to
  */
 #[ObservedBy(ContentObserver::class)]
 final class Content extends Model implements HasMedia, IDynamicContentModel, IEmbeddableModel, IExtendableModel, ILockableModel, IOptimisticLockableModel, IPreloadsAppendedRelations, IProvidesRerankerText, ISearchableModel, IValidatableModel, ProvidesFacetLabelSources, ProvidesSyncableRelations, Sortable, Taggable
