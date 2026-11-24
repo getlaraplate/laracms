@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Modules\CMS\Casts\EntityType;
 use Modules\CMS\Models\Category;
 use Modules\CMS\Models\Content;
@@ -83,4 +84,22 @@ it('reads the ancestors of the chunk once, not once per category that has them',
     // The three categories of the contents, and the two ancestors the two leaves share: each one model.
     expect($hydrated)->toHaveCount(5)
         ->and(array_count_values($hydrated))->each->toBe(1);
+});
+
+it('reads the ancestors and their closure rows in one query', function (): void {
+    $categories = Category::query()->whereKey([$this->first_leaf->id, $this->second_leaf->id, $this->lone_root->id])->with('translations')->get();
+
+    DB::enableQueryLog();
+    Category::assignPaths($categories);
+    $closure_reads = collect(DB::getQueryLog())->filter(static fn (array $query): bool => str_contains($query['query'], 'core_taxonomies_closure'));
+    DB::disableQueryLog();
+
+    expect($closure_reads)->toHaveCount(1)
+        ->and($closure_reads->first()['query'])->toContain('from "core_taxonomies" inner join "core_taxonomies_closure"')
+        ->and($categories->mapWithKeys(static fn (Category $category): array => [$category->id => $category->path])->all())
+        ->toBe([
+            $this->first_leaf->id => Category::query()->findOrFail($this->first_leaf->id)->path,
+            $this->second_leaf->id => Category::query()->findOrFail($this->second_leaf->id)->path,
+            $this->lone_root->id => Category::query()->findOrFail($this->lone_root->id)->path,
+        ]);
 });
