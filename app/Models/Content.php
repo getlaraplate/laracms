@@ -85,6 +85,7 @@ use Spatie\MediaLibrary\HasMedia;
  * @property \Carbon\CarbonImmutable|null $locked_until The moment the lock expires; null means it never does
  * @property \Carbon\CarbonImmutable|null $valid_from
  * @property \Carbon\CarbonImmutable|null $valid_to
+ * @property array<array-key, mixed>|null $shared_components The shared dynamic components of the content
  */
 #[ObservedBy(ContentObserver::class)]
 final class Content extends Model implements HasMedia, IDynamicContentModel, IEmbeddableModel, IExtendableModel, ILockableModel, IOptimisticLockableModel, IPreloadsAppendedRelations, IProvidesRerankerText, ISearchableModel, IValidatableModel, ProvidesFacetLabelSources, ProvidesSyncableRelations, Sortable, Taggable
