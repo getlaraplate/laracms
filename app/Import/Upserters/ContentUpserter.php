@@ -86,8 +86,9 @@ final class ContentUpserter
         $content->entity_id = $entity_id;
         $content->presettable_id = $presettable_id;
         $content->shared_components = $dto->sharedComponents;
-        $content->valid_from = $dto->validFrom;
-        $content->valid_to = $dto->validTo;
+        // The date cast parses the DTO's strings, as it always did; setAttribute() says so to the analyser.
+        $content->setAttribute('valid_from', $dto->validFrom);
+        $content->setAttribute('valid_to', $dto->validTo);
         $content->save();
 
         $content->setTranslation($this->locale, [
