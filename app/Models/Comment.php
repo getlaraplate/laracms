@@ -16,6 +16,7 @@ use Modules\Core\Approvals\Operation;
 use Modules\Core\Casts\ActionEnum;
 use Modules\Core\Contracts\IHidesAttributesFromAnonymous;
 use Modules\Core\Contracts\INeverVersionedModel;
+use Modules\Core\Contracts\ITranslatableModel;
 use Modules\Core\Enums\CoreTables;
 use Modules\Core\Helpers\LocaleContext;
 use Modules\Core\Models\Concerns\HasApprovals;
@@ -38,7 +39,7 @@ use Override;
  * @property bool|null $is_deleted Whether the entity is deleted
  * @property string|null $body
  */
-final class Comment extends Model implements IHidesAttributesFromAnonymous, INeverVersionedModel
+final class Comment extends Model implements IHidesAttributesFromAnonymous, INeverVersionedModel, ITranslatableModel
 {
     use HasApprovals, HasTranslations, HasTypedRecursiveRelationships, HidesAttributesFromAnonymous {
         HasApprovals::toArray as private approvalsToArray;

@@ -16,6 +16,7 @@ use Modules\CMS\Models\Pivot\Contributable;
 use Modules\Core\Contracts\IDynamicEntityTypable;
 use Modules\Core\Contracts\IHidesAttributesFromAnonymous;
 use Modules\Core\Contracts\IPreloadsAppendedRelations;
+use Modules\Core\Contracts\ITranslatableModel;
 use Modules\Core\Models\Concerns\HasPath;
 use Modules\Core\Models\Concerns\HasTranslatedDynamicContents;
 use Modules\Core\Models\Concerns\HidesAttributesFromAnonymous;
@@ -41,7 +42,7 @@ use Spatie\MediaLibrary\HasMedia as IMediable;
  * @property string|null $slug
  * @property array<array-key, mixed>|null $components
  */
-final class Contributor extends Model implements IHidesAttributesFromAnonymous, IMediable, IPreloadsAppendedRelations, Taggable
+final class Contributor extends Model implements IHidesAttributesFromAnonymous, IMediable, IPreloadsAppendedRelations, ITranslatableModel, Taggable
 {
     // region Traits
     use HasMultimedia;
