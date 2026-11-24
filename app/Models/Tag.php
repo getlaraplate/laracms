@@ -37,6 +37,8 @@ use Spatie\EloquentSortable\Sortable;
  * @property \Carbon\CarbonImmutable $updated_at
  * @property \Carbon\CarbonImmutable|null $deleted_at
  * @property bool|null $is_deleted Whether the entity is deleted
+ * @property string|null $name
+ * @property string|null $slug
  */
 final class Tag extends Model implements Sortable
 {

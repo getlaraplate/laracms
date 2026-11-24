@@ -86,6 +86,10 @@ use Spatie\MediaLibrary\HasMedia;
  * @property \Carbon\CarbonImmutable|null $valid_from
  * @property \Carbon\CarbonImmutable|null $valid_to
  * @property array<array-key, mixed>|null $shared_components The shared dynamic components of the content
+ * @property string|null $title
+ * @property string|null $slug
+ * @property array<array-key, mixed>|null $components
+ * @property \Modules\CMS\Enums\AiAssistance|null $ai_assistance
  */
 #[ObservedBy(ContentObserver::class)]
 final class Content extends Model implements HasMedia, IDynamicContentModel, IEmbeddableModel, IExtendableModel, ILockableModel, IOptimisticLockableModel, IPreloadsAppendedRelations, IProvidesRerankerText, ISearchableModel, IValidatableModel, ProvidesFacetLabelSources, ProvidesSyncableRelations, Sortable, Taggable
