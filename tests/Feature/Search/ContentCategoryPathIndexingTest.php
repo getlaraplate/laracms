@@ -9,6 +9,7 @@ use Modules\CMS\Casts\EntityType;
 use Modules\CMS\Models\Category;
 use Modules\CMS\Models\Content;
 use Modules\CMS\Tests\TestCase;
+use Modules\Core\Helpers\LocaleContext;
 
 /*
  * The category `path` of an indexed content, built while a chunk of contents is prepared for the search engine
@@ -103,3 +104,47 @@ it('reads the ancestors and their closure rows in one query', function (): void 
             $this->lone_root->id => Category::query()->findOrFail($this->lone_root->id)->path,
         ]);
 });
+
+it('indexes the path the accessor gives when an ancestor is hidden by a scope or lacks its translation', function (string $hide): void {
+    match ($hide) {
+        'inactive middle' => DB::table('core_taxonomies')->where('id', $this->middle->id)->update(['is_active' => false]),
+        'untranslated root' => DB::table('core_taxonomies_translations')->where('taxonomy_id', $this->root->id)->delete(),
+    };
+
+    $documents = contentCategoryPathDocuments(Content::query()->whereKey($this->contents->modelKeys())->orderBy('id')->get());
+    $expected = Category::query()->findOrFail($this->first_leaf->id)->path;
+    $hidden_slug = $hide === 'inactive middle' ? $this->middle->slug : $this->root->slug;
+
+    expect(collect($documents[0]['categories'])->pluck('path', 'id')->get($this->first_leaf->id))->toBe($expected)
+        ->and($expected)->not->toContain($hidden_slug . '/');
+})->with(['inactive middle', 'untranslated root']);
+
+it('builds the path again when the locale, the parent or the slug it was given for changes, and after refresh()', function (string $change): void {
+    $leaf = Category::query()->with('translations')->findOrFail($this->first_leaf->id);
+    Category::assignPaths([$leaf]);
+    $given = $leaf->path;
+
+    // An ancestor renamed elsewhere: the value given for this load stays until something on the node changes.
+    DB::table('core_taxonomies_translations')->where('taxonomy_id', $this->root->id)->update(['slug' => 'renamed-root']);
+    expect($leaf->path)->toBe($given);
+
+    $locale = LocaleContext::get();
+
+    match ($change) {
+        'refresh' => $leaf->refresh(),
+        'parent' => $leaf->parent_id = $this->lone_root->id,
+        'slug' => $leaf->slug = 'renamed-leaf',
+        'locale' => LocaleContext::set($locale === 'it' ? 'en' : 'it'),
+    };
+
+    $rebuilt = $leaf->path;
+    LocaleContext::set($locale);
+
+    // Built again from the ancestors as they are now. In another locale the ancestors may not be readable at all
+    // (no translation), so there the value only has to differ.
+    expect($rebuilt)->not->toBe($given);
+
+    if ($change !== 'locale') {
+        expect($rebuilt)->toContain('renamed-root/');
+    }
+})->with(['refresh', 'parent', 'slug', 'locale']);
