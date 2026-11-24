@@ -7,10 +7,10 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
 use Modules\CMS\Casts\EntityType;
 use Modules\CMS\Models\Content;
-use Modules\CMS\Services\ContentExtenderRegistry;
 use Modules\CMS\Tests\Stubs\ContentExtension\StubExtendedThing;
 use Modules\CMS\Tests\TestCase;
 use Modules\Core\Events\ModelRequiresIndexing;
+use Modules\Core\Search\Extensions\ExtensionRegistry;
 
 uses(TestCase::class, RefreshDatabase::class);
 
@@ -26,7 +26,7 @@ beforeEach(function (): void {
         $table->timestamps();
     });
 
-    app(ContentExtenderRegistry::class)->register('cms.stub_extended', StubExtendedThing::class);
+    app(ExtensionRegistry::class)->register(Content::class, 'cms.stub_extended', StubExtendedThing::class);
 });
 
 it('adds extended_type and a nested extension section to an extended content document', function (): void {

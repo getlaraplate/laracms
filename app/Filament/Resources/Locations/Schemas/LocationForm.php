@@ -87,7 +87,7 @@ final class LocationForm
                     $get('name'),
                     $get('city'),
                     $get('country'),
-                ], static fn ($value): bool => is_string($value) && mb_trim($value) !== ''));
+                ], static fn (mixed $value): bool => is_string($value) && mb_trim($value) !== ''));
 
                 $query = implode(', ', $parts);
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\CMS\Services\Graph;
 
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Collection;
 use Modules\CMS\Enums\CMSTables;
 use Modules\CMS\Models\Content;
@@ -82,7 +83,7 @@ final class TagCoOccurrenceService
         /** @var Collection<int, object{source: int|string, target: int|string, weight: int|string}> $rows */
         $rows = (new Tag)->getConnection()->query()
             ->from("{$taggables} as t1")
-            ->join("{$taggables} as t2", static function ($join): void {
+            ->join("{$taggables} as t2", static function (JoinClause $join): void {
                 $join->on('t1.taggable_id', '=', 't2.taggable_id')
                     ->whereColumn('t1.taggable_type', '=', 't2.taggable_type')
                     ->whereColumn('t1.tag_id', '<', 't2.tag_id');

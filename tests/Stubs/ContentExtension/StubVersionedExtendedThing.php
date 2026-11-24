@@ -6,6 +6,7 @@ namespace Modules\CMS\Tests\Stubs\ContentExtension;
 
 use Modules\CMS\Contracts\ExtendsContent;
 use Modules\CMS\Models\Concerns\ExtendsContentTrait;
+use Modules\Core\Search\Schema\FieldType;
 use Override;
 
 /**
@@ -39,9 +40,14 @@ final class StubVersionedExtendedThing extends VersionedExtenderBase implements 
         return ['brand' => $this->brand];
     }
 
+    /**
+     * The mapping of every key {@see self::searchableExtension()} writes.
+     *
+     * @return array<string, mixed>
+     */
     #[Override]
     public function searchableExtensionMapping(): array
     {
-        return [];
+        return ['brand' => FieldType::Keyword];
     }
 }

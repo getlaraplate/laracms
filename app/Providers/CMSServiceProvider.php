@@ -23,7 +23,6 @@ use Modules\CMS\Observers\ContentReferenceObserver;
 use Modules\CMS\Observers\ContentTranslationObserver;
 use Modules\CMS\Observers\PlaceObserver;
 use Modules\CMS\Services\CommentModerationAdapter;
-use Modules\CMS\Services\ContentExtenderRegistry;
 use Modules\CMS\Services\ContentOwnerAuthorizer;
 use Modules\Core\ApplicationContent\Contracts\ApplicationContentRetrievalProviderRegistryInterface;
 use Modules\Core\Enums\CoreTables;
@@ -61,8 +60,6 @@ final class CMSServiceProvider extends ModuleServiceProvider
     public function register(): void
     {
         parent::register();
-
-        $this->app->singleton(ContentExtenderRegistry::class);
 
         $this->app->register(ImportServiceProvider::class);
     }

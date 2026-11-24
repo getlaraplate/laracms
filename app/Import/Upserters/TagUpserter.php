@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\CMS\Import\Upserters;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Log;
 use Modules\CMS\Import\Dto\ImportTagDto;
@@ -89,7 +90,7 @@ final class TagUpserter
         // must still be found (and reused) rather than crashing the import.
         return $tag_model->newQueryWithoutScopes()
             ->whereKey($tag_id)
-            ->when($locking, static fn ($query) => $query->sharedLock())
+            ->when($locking, static fn (Builder $query): Builder => $query->sharedLock())
             ->firstOrFail();
     }
 

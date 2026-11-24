@@ -32,7 +32,7 @@ final class ContentTranslationObserver
     /**
      * @var array<string, list<string>>
      */
-    private const EMBED_FIELD_BACKING_COLUMNS = [
+    private const array EMBED_FIELD_BACKING_COLUMNS = [
         'textual_only' => ['components'],
     ];
 

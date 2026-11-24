@@ -58,6 +58,10 @@ The command implementation is deliberately thin: `Modules\CMS\Console\ImportComm
 
 `Naxos\Importers\NaxosApiImporter` remains compatible with the retained CMS namespace. The Naxos SQL dump importer was removed on 2026-09-15; Naxos is imported from its REST API only.
 
+## Cache labels
+
+An import writes through Eloquent: the model events and the relation overrides already flush the cache labels of every record and pivot row it writes. On top of that, as a defensive guarantee, at the end of a run, successful or not, the pipeline flushes every table it can write (contents, categories, contributors, tags, locations and their pivots) whole, table label and every row, in a single flush call, so a write path that ever bypasses the model events is still covered. See `Modules/Core/docs/rag/CACHE_LABELS_DEVELOPER.md`.
+
 ## Import is not synchronization
 
 `cms:import` is a bounded, operator-triggered batch operation. Continuous synchronization additionally needs remote identity, cursors, direction, conflict policy, retries, locking, scheduling, and observability. Those concerns must be designed as a separate integration layer, even when it reuses CMS import mapping and destination services.
