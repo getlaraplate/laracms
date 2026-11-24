@@ -310,8 +310,8 @@ it('measures the baseline of the role, category and comment hierarchies', functi
     });
 
     // Case 2: a chunk of 50 contents prepared for the search engine as the indexer prepares it: the import query,
-    // makeSearchableUsing() (the relations the document reads, the category paths), then each document.
-    $record('50 contents indexed with category paths', static function (): void {
+    // makeSearchableUsing() (the relations the document reads), then each document.
+    $record('50 contents indexed', static function (): void {
         $indexer = new Content;
         $chunk = $indexer->makeAllSearchableUsing(Content::query())->orderBy('id')->limit(50)->get();
 

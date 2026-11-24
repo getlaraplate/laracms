@@ -98,10 +98,6 @@ it('has dynamic contents trait', function (): void {
     expect(method_exists($this->category, 'getDynamicFields'))->toBeTrue();
 });
 
-it('has path trait', function (): void {
-    expect(class_uses_recursive($this->category))->toContain(Modules\Core\Models\Concerns\HasPath::class);
-});
-
 it('has approvals trait', function (): void {
     expect(class_uses_recursive($this->category))->toContain(Modules\Core\Models\Concerns\HasApprovals::class);
 });
@@ -264,61 +260,7 @@ it('has translations trait', function (): void {
     expect(method_exists($this->category, 'getTranslatableFields'))->toBeTrue();
 });
 
-it('builds path, ids and full_name correctly from ancestors', function (): void {
-    $reflection = new ReflectionClass(Category::class);
-
-    /** @var Category $root */
-    $root = $reflection->newInstanceWithoutConstructor();
-    $attributesProperty = $reflection->getProperty('attributes');
-    $attributesProperty->setValue($root, [
-        'id' => 1,
-        'slug' => 'root',
-        'name' => 'Root',
-    ]);
-
-    /** @var Category $child */
-    $child = $reflection->newInstanceWithoutConstructor();
-    $attributesProperty->setValue($child, [
-        'id' => 2,
-        'slug' => 'child',
-        'name' => 'Child',
-    ]);
-
-    /** @var Category $grandchild */
-    $grandchild = $reflection->newInstanceWithoutConstructor();
-    $attributesProperty->setValue($grandchild, [
-        'id' => 3,
-        'slug' => 'grandchild',
-        'name' => 'Grandchild',
-    ]);
-
-    // Simulate ancestors relation: [immediate parent, then root]
-    $grandchild->setRelation('ancestors', collect([$child, $root]));
-
-    expect($grandchild->getPath())->toBe('root/child/grandchild')
-        ->and($grandchild->ids)->toBe('1.2.3')
-        ->and($grandchild->full_name)->toBe('Root > Child > Grandchild');
-});
-
-it('falls back to current node data when no ancestors are present', function (): void {
-    $reflection = new ReflectionClass(Category::class);
-
-    /** @var Category $category */
-    $category = $reflection->newInstanceWithoutConstructor();
-    $attributesProperty = $reflection->getProperty('attributes');
-    $attributesProperty->setValue($category, [
-        'id' => 10,
-        'slug' => 'single',
-        'name' => 'Single',
-    ]);
-
-    // No ancestors relation set
-    expect($category->getPath())->toBe('single')
-        ->and($category->ids)->toBe('10')
-        ->and($category->full_name)->toBe('Single');
-});
-
-it('builds ids and full_name in depth order from ancestors loaded from the database', function (int $root_position, int $child_position, int $grandchild_position): void {
+it('loads the ancestors in depth order from the database whatever the sibling positions', function (int $root_position, int $child_position, int $grandchild_position): void {
     $locale = config('app.locale');
     $chain = [];
 
@@ -333,10 +275,9 @@ it('builds ids and full_name in depth order from ancestors loaded from the datab
 
     [$root, $child, $grandchild] = $chain;
 
-    $loaded = Category::query()->withAncestorsForPath()->findOrFail($grandchild->id);
+    $loaded = Category::query()->with('ancestors')->findOrFail($grandchild->id);
 
-    expect($loaded->full_name)->toBe('root > child > grandchild')
-        ->and($loaded->ids)->toBe(sprintf('%d.%d.%d', $root->id, $child->id, $grandchild->id))
+    expect($loaded->ancestors->modelKeys())->toBe([$child->id, $root->id])
         ->and($loaded->ancestors->pluck('order_column')->all())->toBe([$child_position, $root_position]);
 })->with([
     // Sibling positions that do not follow depth. On the first, the scope order sorts the ancestors root first.

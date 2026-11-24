@@ -20,8 +20,9 @@ use Modules\Core\Support\PermissionName;
 /*
  * Characterization of the comment hierarchy on the adjacency-list engine, written before it is replaced.
  * The thread is: comment 1 (root), comments 2 and 3 (its replies), comment 4 (reply to 2). The expected
- * payloads are what the tree endpoint returns today, `depth` (signed: negative towards the ancestors) and
- * `path` included, and they must keep holding unchanged unless the migration plan says otherwise.
+ * payloads are what the tree endpoint returns today, `depth` (signed: negative towards the ancestors) included,
+ * and they must keep holding unchanged unless the migration plan says otherwise. The dotted `path` the adjacency-list
+ * engine also gave each node is gone: Laraplate stays headless and computes no hierarchy path (decision 2026-11-24).
  */
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -47,10 +48,10 @@ function hierarchyCharacterizationComment(int $content_id, int $user_id, string 
 }
 
 /**
- * The tree of every comment, reduced to `[node id, [[related id, depth, path], ...]]` in response order.
+ * The tree of every comment, reduced to `[node id, [[related id, depth], ...]]` in response order.
  *
  * @param  array<string, bool>  $query
- * @return list<array{0: int, 1: list<array{0: int, 1: int, 2: string}>}>
+ * @return list<array{0: int, 1: list<array{0: int, 1: int}>}>
  */
 function hierarchyCharacterizationTree(TestCase $test, User $caller, array $query): array
 {
@@ -65,7 +66,7 @@ function hierarchyCharacterizationTree(TestCase $test, User $caller, array $quer
 
             return [
                 $node['id'],
-                collect($relation)->map(static fn (array $related): array => [$related['id'], $related['depth'], $related['path']])->all(),
+                collect($relation)->map(static fn (array $related): array => [$related['id'], $related['depth']])->all(),
             ];
         })
         ->all();
@@ -83,25 +84,25 @@ it('pins the identifiers of the thread the expected payloads are written for', f
     expect([$this->root->id, $this->first_reply->id, $this->second_reply->id, $this->grandchild->id])->toBe([1, 2, 3, 4]);
 });
 
-it('returns the descendants of every comment with today\'s depth and path when children are requested', function (): void {
+it('returns the descendants of every comment with today\'s depth when children are requested', function (): void {
     $tree = hierarchyCharacterizationTree($this, hierarchyCharacterizationSuperadmin(), ['children' => true]);
 
     expect($tree)->toBe([
-        [1, [[1, 0, '1'], [2, 1, '1.2'], [3, 1, '1.3'], [4, 2, '1.2.4']]],
-        [2, [[2, 0, '2'], [4, 1, '2.4']]],
-        [3, [[3, 0, '3']]],
-        [4, [[4, 0, '4']]],
+        [1, [[1, 0], [2, 1], [3, 1], [4, 2]]],
+        [2, [[2, 0], [4, 1]]],
+        [3, [[3, 0]]],
+        [4, [[4, 0]]],
     ]);
 });
 
-it('returns the ancestors of every comment with today\'s signed depth and path when parents are requested', function (): void {
+it('returns the ancestors of every comment with today\'s signed depth when parents are requested', function (): void {
     $tree = hierarchyCharacterizationTree($this, hierarchyCharacterizationSuperadmin(), ['parents' => true]);
 
     expect($tree)->toBe([
-        [1, [[1, 0, '1']]],
-        [2, [[2, 0, '2'], [1, -1, '2.1']]],
-        [3, [[3, 0, '3'], [1, -1, '3.1']]],
-        [4, [[4, 0, '4'], [2, -1, '4.2'], [1, -2, '4.2.1']]],
+        [1, [[1, 0]]],
+        [2, [[2, 0], [1, -1]]],
+        [3, [[3, 0], [1, -1]]],
+        [4, [[4, 0], [2, -1], [1, -2]]],
     ]);
 });
 
@@ -109,12 +110,31 @@ it('returns the whole bloodline of every comment when parents and children are r
     $tree = hierarchyCharacterizationTree($this, hierarchyCharacterizationSuperadmin(), ['children' => true, 'parents' => true]);
 
     expect($tree)->toBe([
-        [1, [[1, 0, '1'], [2, 1, '1.2'], [3, 1, '1.3'], [4, 2, '1.2.4']]],
-        [2, [[2, 0, '2'], [4, 1, '2.4'], [1, -1, '2.1']]],
-        [3, [[3, 0, '3'], [1, -1, '3.1']]],
-        [4, [[4, 0, '4'], [2, -1, '4.2'], [1, -2, '4.2.1']]],
+        [1, [[1, 0], [2, 1], [3, 1], [4, 2]]],
+        [2, [[2, 0], [4, 1], [1, -1]]],
+        [3, [[3, 0], [1, -1]]],
+        [4, [[4, 0], [2, -1], [1, -2]]],
     ]);
 });
+
+it('puts no path on any node of the tree', function (array $query): void {
+    Cache::flush();
+    $response = $this->actingAs(hierarchyCharacterizationSuperadmin())->json('GET', '/api/v1/tree/cms/comments', $query);
+    $response->assertOk();
+    $nodes = collect($response->json('data'))
+        ->flatMap(static fn (array $node): array => [$node, ...collect($node)->only(['descendants_and_self', 'ancestors_and_self', 'bloodline'])->first()]);
+
+    expect($nodes)->toHaveCount(match (true) {
+        isset($query['children'], $query['parents']) => 4 + 4 + 3 + 2 + 3,
+        isset($query['children']) => 4 + 4 + 2 + 1 + 1,
+        default => 4 + 1 + 2 + 2 + 3,
+    })
+        ->and($nodes->filter(static fn (array $node): bool => array_key_exists('path', $node)))->toBeEmpty();
+})->with([
+    'children' => [['children' => true]],
+    'parents' => [['parents' => true]],
+    'parents and children' => [['children' => true, 'parents' => true]],
+]);
 
 it('leaves out of every tree the comment the ACL hides and keeps the others unchanged', function (): void {
     $role = Role::factory()->create(['name' => 'hierarchy_reader', 'guard_name' => 'api']);
@@ -140,17 +160,17 @@ it('leaves out of every tree the comment the ACL hides and keeps the others unch
     $reader = $reader->fresh();
 
     expect(hierarchyCharacterizationTree($this, $reader, ['children' => true]))->toBe([
-        [1, [[1, 0, '1'], [2, 1, '1.2'], [4, 2, '1.2.4']]],
-        [2, [[2, 0, '2'], [4, 1, '2.4']]],
-        [4, [[4, 0, '4']]],
+        [1, [[1, 0], [2, 1], [4, 2]]],
+        [2, [[2, 0], [4, 1]]],
+        [4, [[4, 0]]],
     ])->and(hierarchyCharacterizationTree($this, $reader, ['parents' => true]))->toBe([
-        [1, [[1, 0, '1']]],
-        [2, [[2, 0, '2'], [1, -1, '2.1']]],
-        [4, [[4, 0, '4'], [2, -1, '4.2'], [1, -2, '4.2.1']]],
+        [1, [[1, 0]]],
+        [2, [[2, 0], [1, -1]]],
+        [4, [[4, 0], [2, -1], [1, -2]]],
     ])->and(hierarchyCharacterizationTree($this, $reader, ['children' => true, 'parents' => true]))->toBe([
-        [1, [[1, 0, '1'], [2, 1, '1.2'], [4, 2, '1.2.4']]],
-        [2, [[2, 0, '2'], [4, 1, '2.4'], [1, -1, '2.1']]],
-        [4, [[4, 0, '4'], [2, -1, '4.2'], [1, -2, '4.2.1']]],
+        [1, [[1, 0], [2, 1], [4, 2]]],
+        [2, [[2, 0], [4, 1], [1, -1]]],
+        [4, [[4, 0], [2, -1], [1, -2]]],
     ]);
 });
 

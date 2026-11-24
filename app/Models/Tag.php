@@ -21,7 +21,6 @@ use Modules\CMS\Enums\CMSTables;
 use Modules\CMS\Models\Pivot\Taggable;
 use Modules\CMS\Models\Translations\TagTranslation;
 use Modules\Core\Helpers\LocaleContext;
-use Modules\Core\Models\Concerns\HasPath;
 use Modules\Core\Models\Concerns\HasTranslations;
 use Modules\Core\Models\Concerns\SortableTrait;
 use Modules\Core\Overrides\LocaleScope;
@@ -31,7 +30,6 @@ use Spatie\EloquentSortable\Sortable;
 
 final class Tag extends Model implements Sortable
 {
-    use HasPath;
     use HasTranslations;
     use SortableTrait;
 
@@ -286,12 +284,6 @@ final class Tag extends Model implements Sortable
         ]);
 
         return $rules;
-    }
-
-    #[Override]
-    public function getPath(): null
-    {
-        return null;
     }
 
     /**

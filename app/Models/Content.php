@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
-use Illuminate\Support\Collection as BaseCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\CMS\Casts\EntityType;
@@ -48,7 +47,6 @@ use Modules\Core\Helpers\LocaleContext;
 use Modules\Core\Locking\Traits\HasLocks;
 use Modules\Core\Locking\Traits\HasOptimisticLocking;
 use Modules\Core\Models\Concerns\HasApprovals;
-use Modules\Core\Models\Concerns\HasPath;
 use Modules\Core\Models\Concerns\HasTranslatedDynamicContents;
 use Modules\Core\Models\Concerns\HasValidity;
 use Modules\Core\Models\Concerns\SortableTrait;
@@ -84,7 +82,6 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
     use HasLocks;
     use HasMultimedia;
     use HasOptimisticLocking;
-    use HasPath;
     use HasTags;
     use HasTranslatedDynamicContents {
         HasTranslatedDynamicContents::getRules as private getRulesTranslatedDynamicContents;
@@ -95,7 +92,6 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
     use Searchable {
         Searchable::toSearchableArray as private toSearchableArrayTrait;
         Searchable::getSearchMapping as private getSearchMappingTrait;
-        Searchable::makeSearchableUsing as private makeSearchableUsingTrait;
     }
     use SortableTrait {
         SortableTrait::scopeOrdered as private scopePriorityOrdered;
@@ -401,8 +397,6 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
         return [
             'contributors',
             'categories',
-            // The `path` of each category, which walks its ancestors' translated
-            // slugs, is given in one batch by makeSearchableUsing() below.
             'categories.translations',
             'tags',
             'locations',
@@ -411,25 +405,6 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
             'presettable.entity',
             'presettable.preset',
         ];
-    }
-
-    /**
-     * Load what toSearchableArray() reads for the chunk, then give the categories of every content their `path` in
-     * one batch ({@see Category::assignPaths()}): the closure rows of all of them in one query and their distinct
-     * ancestors once, instead of one ancestor model per category and ancestor.
-     *
-     * @param  BaseCollection<int, covariant Model>  $models
-     * @return BaseCollection<int, covariant Model>
-     */
-    public function makeSearchableUsing(BaseCollection $models): BaseCollection
-    {
-        $models = $this->makeSearchableUsingTrait($models);
-
-        Category::assignPaths($models->flatMap(
-            static fn (mixed $content): iterable => $content instanceof self && $content->relationLoaded('categories') ? $content->categories : [],
-        ));
-
-        return $models;
     }
 
     /**
@@ -444,14 +419,13 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
         $preset = $this->preset;
         $document['preset'] = $preset !== null ? $preset->name : '';
         // $document['preset_id'] = $this->preset->id;
-        $document['contributors'] = $this->contributors->map(fn (Contributor $contributor) => $contributor->only(['id', 'name', 'slug', 'path']))->values()->all();
-        $document['categories'] = $this->categories->map(fn (Category $category) => $category->only(['id', 'name', 'slug', 'path']))->values()->all();
-        $document['tags'] = $this->tags->map(fn (Tag $tag) => $tag->only(['id', 'name', 'slug', 'path']))->values()->all();
+        $document['contributors'] = $this->contributors->map(fn (Contributor $contributor) => $contributor->only(['id', 'name', 'slug']))->values()->all();
+        $document['categories'] = $this->categories->map(fn (Category $category) => $category->only(['id', 'name', 'slug']))->values()->all();
+        $document['tags'] = $this->tags->map(fn (Tag $tag) => $tag->only(['id', 'name', 'slug']))->values()->all();
         $document['locations'] = $this->locations->map(fn (Location $location) => $location->only([
             'id',
             'name',
             'slug',
-            'path',
             'address',
             'city',
             'province',
@@ -539,7 +513,6 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
                 'name' => FieldType::Text,
                 'id' => ['type' => FieldType::Integer, 'filterable' => true],
                 'slug' => ['type' => FieldType::Keyword, 'filterable' => true],
-                'path' => ['type' => FieldType::Keyword, 'filterable' => true],
             ],
         ]));
         $schema->addField(new FieldDefinition('categories', FieldType::Array, [IndexType::Searchable, IndexType::Filterable, IndexType::Facetable], [
@@ -548,7 +521,6 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
                 'name' => FieldType::Text,
                 'id' => ['type' => FieldType::Integer, 'filterable' => true],
                 'slug' => ['type' => FieldType::Keyword, 'filterable' => true],
-                'path' => ['type' => FieldType::Keyword, 'filterable' => true],
             ],
         ]));
         $schema->addField(new FieldDefinition('tags', FieldType::Array, [IndexType::Searchable, IndexType::Filterable, IndexType::Facetable], [
@@ -557,7 +529,6 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
                 'name' => FieldType::Keyword,
                 'id' => ['type' => FieldType::Integer, 'filterable' => true],
                 'slug' => ['type' => FieldType::Keyword, 'filterable' => true],
-                'path' => ['type' => FieldType::Keyword, 'filterable' => true],
             ],
         ]));
         $schema->addField(new FieldDefinition('locations', FieldType::Array, [IndexType::Searchable, IndexType::Filterable], [
@@ -566,7 +537,6 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
                 'name' => FieldType::Text,
                 'id' => ['type' => FieldType::Integer, 'filterable' => true],
                 'slug' => ['type' => FieldType::Keyword, 'filterable' => true],
-                'path' => FieldType::Keyword,
                 'address' => FieldType::Text,
                 'city' => ['type' => FieldType::Keyword, 'filterable' => true],
                 'province' => ['type' => FieldType::Keyword, 'filterable' => true],
@@ -665,18 +635,6 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
         ]);
 
         return $rules;
-    }
-
-    public function getPathPrefix(): string
-    {
-        $entity = $this->entity;
-
-        return $entity !== null ? $entity->slug : '';
-    }
-
-    public function getPath(): ?string
-    {
-        return $this->categories->first()?->getPath();
     }
 
     public function toArray(): array

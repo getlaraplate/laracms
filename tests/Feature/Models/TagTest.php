@@ -95,10 +95,6 @@ it('has slug trait', function (): void {
     expect(method_exists(TagTranslation::class, 'generateSlug'))->toBeTrue();
 });
 
-it('has path trait', function (): void {
-    expect(method_exists(Tag::class, 'getPath'))->toBeTrue();
-});
-
 it('has sortable trait', function (): void {
     expect(method_exists(Tag::class, 'moveToEnd'))->toBeTrue();
 });

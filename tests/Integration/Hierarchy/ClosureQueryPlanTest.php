@@ -70,9 +70,3 @@ it('reads the eager loaded descendants of categories by key', function (): void 
 
     expect($access)->toStartWith('SEARCH core_taxonomies USING ')->toContain('rowid=?');
 });
-
-it('reads the ancestors of the batch path by key', function (): void {
-    $access = closureQueryCategoryAccess(fn () => Category::assignPaths(Category::query()->whereKey($this->leaves->modelKeys())->get()));
-
-    expect($access)->toStartWith('SEARCH core_taxonomies USING ')->toContain('rowid=?');
-});
