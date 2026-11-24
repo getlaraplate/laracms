@@ -77,7 +77,7 @@ trait ExtendsContentTrait
 
                 $content = Content::withExtended()->withTrashed()->find($contentId);
 
-                if ($content === null) {
+                if (! $content instanceof Content) {
                     return;
                 }
 
@@ -188,14 +188,14 @@ trait ExtendsContentTrait
             return parent::save($options);
         }
 
-        return $this->getConnection()->transaction(function () use ($options): bool {
-            $content = $this->tempContent;
+        $content = $this->tempContent;
 
+        return $this->getConnection()->transaction(function () use ($options, $content): bool {
             // extended_type is guarded; set it directly so it is written only through this path (C17).
             $content->extended_type = $this->contentAlias();
             $content->save();
 
-            $this->content_id = $content->getKey();
+            $this->content_id = $content->id;
             $this->tempContent = null;
 
             $saved = parent::save($options);

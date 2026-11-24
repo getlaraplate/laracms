@@ -37,7 +37,7 @@ interface ExtendsContent extends IExtendsModel
     /**
      * The back-relation to the extended content, with the hide scope removed so it resolves.
      *
-     * @return BelongsTo<Content, Model>
+     * @return BelongsTo<Content, covariant Model>
      */
     public function content(): BelongsTo;
 

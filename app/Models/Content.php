@@ -8,6 +8,7 @@ use DateTimeInterface;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
@@ -235,7 +236,7 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
             $text = mb_trim(implode(' ', array_filter($parts, static fn (mixed $part): bool => is_string($part) && $part !== '')));
 
             if ($text !== '') {
-                $texts[$content->getKey()] = mb_substr($text, 0, self::RERANKER_TEXT_LIMIT);
+                $texts[$content->id] = mb_substr($text, 0, self::RERANKER_TEXT_LIMIT);
             }
         }
 
@@ -448,7 +449,8 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
         // $document['preset_id'] = $this->preset->id;
 
         foreach (self::indexedRelations() as $relation) {
-            $document[$relation->field()->name] = $relation->document($this->getAttribute($relation->relation) ?? []);
+            $related = $this->getAttribute($relation->relation);
+            $document[$relation->field()->name] = $relation->document($related instanceof EloquentCollection ? $related->values()->all() : []);
         }
 
         $document['type'] = $this->type;
@@ -529,7 +531,7 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
         // Get component fields from default translation
         $component_fields = [];
 
-        if ($default_translation instanceof ContentTranslation && $default_translation->components !== null) {
+        if ($default_translation instanceof ContentTranslation) {
             $component_fields = array_keys($default_translation->components);
         }
 

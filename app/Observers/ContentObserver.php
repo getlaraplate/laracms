@@ -14,7 +14,8 @@ final class ContentObserver
     public function creating(Content $model): void
     {
         // Auto-assign entity and preset if not already set
-        if (($model->entity_id === null || $model->presettable_id === null)) {
+        // Read through getAttribute(): on creating the columns may hold no value yet.
+        if ($model->getAttribute('entity_id') === null || $model->getAttribute('presettable_id') === null) {
             $model->setDefaultEntityAndPreset();
         }
     }

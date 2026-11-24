@@ -225,12 +225,12 @@ trait HasTags
     protected static function convertToTagsOfAnyType(string|array|ArrayAccess|Tag $values): SupportCollection
     {
         return SupportCollection::make(self::normalizeTagsInput($values))
-            ->flatMap(function (string|Tag $value): SupportCollection {
+            ->flatMap(function (string|Tag $value): array {
                 if ($value instanceof Tag) {
-                    return SupportCollection::make([$value]);
+                    return [$value];
                 }
 
-                return SupportCollection::make(Tag::findFromStringOfAnyType($value)->all());
+                return Tag::findFromStringOfAnyType($value)->all();
             })
             ->values();
     }

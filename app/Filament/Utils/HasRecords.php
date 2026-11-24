@@ -71,7 +71,7 @@ trait HasRecords
             $tabs[$entity->name] = Tab::make($entity->name)
                 ->badge($totals)
                 ->modifyQueryUsing(
-                    fn (Builder $query): Builder => $query->whereRaw($entity_column . ' = ?', [$entity_id]),
+                    fn (Builder $query): Builder => $query->where($entity_column, $entity_id),
                 );
         }
 

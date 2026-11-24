@@ -114,7 +114,7 @@ final class CmsContentEvidenceProjector
     private function excerpt(ContentTranslation $translation, string $fallback): array
     {
         $parts = [];
-        $components = is_array($translation->components) ? $translation->components : [];
+        $components = $translation->components;
 
         foreach (self::TEXT_FIELDS as $field) {
             if (! array_key_exists($field, $components)) {

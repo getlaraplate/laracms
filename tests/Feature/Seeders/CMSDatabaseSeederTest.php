@@ -315,3 +315,16 @@ it('lets the seeded publisher list on the app the categories of the CMS entities
     expect(collect($response->json('data'))->pluck('id')->all())->toContain($cms_category->id)
         ->not->toContain($other_category->id);
 });
+
+it('seeds an empty list as the default of a multiple select, and nothing for a single one', function (): void {
+    // The match arm read `FieldType::Select && isset(...) && ...`, a boolean compared with the enum, so it never
+    // matched. No seeded field is a multiple select today; the private method is reached directly for that reason.
+    $default = new ReflectionMethod(CMSDatabaseSeeder::class, 'getDefaultFieldValue');
+    $seeder = resolve(CMSDatabaseSeeder::class);
+
+    $multiple = new Modules\Core\Models\Field(['type' => Modules\Core\Casts\FieldType::Select, 'options' => ['multiple' => true]]);
+    $single = new Modules\Core\Models\Field(['type' => Modules\Core\Casts\FieldType::Select, 'options' => ['multiple' => false]]);
+
+    expect($default->invoke($seeder, $multiple, false))->toBe([])
+        ->and($default->invoke($seeder, $single, false))->toBeNull();
+});
