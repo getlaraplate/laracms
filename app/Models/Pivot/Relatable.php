@@ -8,6 +8,12 @@ use Modules\CMS\Enums\CMSTables;
 use Modules\Core\Overrides\Pivot;
 use Override;
 
+/**
+ * @property int $content_id
+ * @property int $related_content_id
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
+ */
 final class Relatable extends Pivot
 {
     /**

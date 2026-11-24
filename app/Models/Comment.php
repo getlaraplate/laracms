@@ -28,6 +28,17 @@ use Modules\Core\Overrides\Model;
 use Modules\Core\Support\PermissionName;
 use Override;
 
+/**
+ * @property int $id
+ * @property int $content_id
+ * @property int $user_id
+ * @property int|null $parent_id
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
+ * @property \Carbon\CarbonImmutable|null $deleted_at
+ * @property bool|null $is_deleted Whether the entity is deleted
+ * @property string|null $body
+ */
 final class Comment extends Model implements IHidesAttributesFromAnonymous, INeverVersionedModel, ITranslatableModel
 {
     use HasApprovals, HasTranslations, HasTypedRecursiveRelationships, HidesAttributesFromAnonymous {

@@ -14,6 +14,16 @@ use Modules\Core\Overrides\Model;
 use Modules\Core\Services\Translation\Definitions\ITranslated;
 use Override;
 
+/**
+ * @property int $id
+ * @property int $comment_id
+ * @property string $locale
+ * @property string $body
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
+ * @property \Carbon\CarbonImmutable|null $deleted_at
+ * @property bool|null $is_deleted Whether the entity is deleted
+ */
 final class CommentTranslation extends Model implements IsPartOfParent, ITranslated
 {
     use RecordsChangesOnOwner;

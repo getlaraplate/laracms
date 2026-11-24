@@ -30,6 +30,17 @@ use Modules\Core\Overrides\Model;
 use Override;
 use Spatie\EloquentSortable\Sortable;
 
+/**
+ * @property int $id
+ * @property string|null $type The type of the tag
+ * @property int $order_column The order of the tag
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
+ * @property \Carbon\CarbonImmutable|null $deleted_at
+ * @property bool|null $is_deleted Whether the entity is deleted
+ * @property string|null $name
+ * @property string|null $slug
+ */
 final class Tag extends Model implements ITranslatableModel, Sortable
 {
     use HasPath;

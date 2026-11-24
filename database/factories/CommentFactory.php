@@ -19,7 +19,7 @@ final class CommentFactory extends Factory
     protected $model = Comment::class;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<Comment>, mixed>
      */
     public function definition(): array
     {
