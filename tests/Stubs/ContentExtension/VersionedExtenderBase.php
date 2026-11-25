@@ -6,6 +6,7 @@ namespace Modules\CMS\Tests\Stubs\ContentExtension;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Modules\Core\Contracts\IVersionedModel;
 use Modules\Core\Enums\VersionStrategy;
 use Modules\Core\Models\Concerns\HasVersions;
 
@@ -13,7 +14,7 @@ use Modules\Core\Models\Concerns\HasVersions;
  * The versioned parent of a test extender, as `Core\Overrides\Model` is the parent of a real one: the extender's
  * `save()` then wraps the history's save wrapper instead of colliding with it.
  */
-abstract class VersionedExtenderBase extends Model
+abstract class VersionedExtenderBase extends Model implements IVersionedModel
 {
     use HasVersions;
     use SoftDeletes {
