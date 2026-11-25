@@ -148,7 +148,7 @@ final class ImportPresetProvisioner
         foreach ($definitions as $field_name => $definition) {
             $field = $this->ensureField($field_name, $definition, $changed, $context);
 
-            if (! $preset->fields()->where('field_id', $field->id)->exists()) {
+            if (! $preset->fields()->wherePivot('field_id', $field->id)->exists()) {
                 $preset->fields()->attach($field->id, [
                     'default' => null,
                     'is_required' => (bool) ($definition['required'] ?? false),

@@ -88,13 +88,11 @@ final class CommentApprovalCapture
         }
 
         $encoded_diff = self::encodeDiff($diff);
-        $modifications_relation = $comment->modifications();
-        $modifications_table = $modifications_relation->getRelated()->getTable();
         $diff_hash = md5($encoded_diff);
 
-        $has_modification_pending = $modifications_relation
-            ->where($modifications_table . '.active', 1)
-            ->where($modifications_table . '.md5', $diff_hash)
+        $has_modification_pending = $comment->modifications()
+            ->where('active', 1)
+            ->where('md5', $diff_hash)
             ->first();
 
         $modifier = auth()->user();
