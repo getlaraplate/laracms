@@ -2,6 +2,50 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.50.0] - 2026-11-25
+
+### 🐛 Bug Fixes
+
+- *(phpstan)* RuntimeSettingDefinitions() returns a list
+- *(translations)* The translatable CMS models declare ITranslatableModel
+- *(phpstan)* Clear CMS's backlog, and seed an empty default for multiple selects
+- *(seeders)* Read the running command through BatchSeeder::console()
+- *(cms)* Comment owners keep the closure in step
+
+### 🚜 Refactor
+
+- *(cms)* Comments on the closure table
+- *(cms)* [**breaking**] Index and serve no hierarchy paths
+
+### 📚 Documentation
+
+- *(models)* Every model declares its columns as @property tags
+- *(models)* Declare the json and array columns too
+- *(models)* Declare translated and proxied attributes, and type factory keys
+- *(cms)* Document category paths and comment threads on closure tables
+- *(cms)* [**breaking**] Correct the reindex after the search path removal
+- *(cms)* [**breaking**] Document the upgrade of an existing install
+
+### ⚡ Performance
+
+- *(cms)* Index category paths in one batch per chunk
+
+### 🧪 Testing
+
+- *(cms)* Baseline benchmark and characterization of hierarchies
+- *(cms)* Comment cascade guard compares foreign key chains
+- *(cms)* Rebuild closures after the benchmark bulk seeds
+- *(cms)* The closure lineages of categories read the taxonomies by key
+- *(cms)* Benchmark the category paths through the search indexer
+- *(cms)* The batch path reads ancestors and closure rows in one query
+- *(cms)* Batch paths with hidden ancestors and after the node changes
+- *(cms)* The batch path reads the taxonomies by key on SQLite
+- *(cms)* Content search tests follow the indexed-relation schema
+
+### ⚙️ Miscellaneous Tasks
+
+- Remove the patch backups committed by mistake
+
 ## [1.49.0] - 2026-11-19
 
 ### 🚀 Features
