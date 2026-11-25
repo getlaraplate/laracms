@@ -71,7 +71,7 @@ final class Contributor extends Model implements IHidesAttributesFromAnonymous, 
     ];
 
     /**
-     * Bridged user always comes from User on serialize / search / path, so it is
+     * Bridged user always comes from User on serialize / search, so it is
      * declared here rather than through a global scope: a closure scope is keyed by
      * spl_object_hash and cannot be lifted per query, which silently defeats
      * `->without('user')`. An always-loaded relation owned by a trait is declared the
