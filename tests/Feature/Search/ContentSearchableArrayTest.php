@@ -143,7 +143,8 @@ it('declares valid_from as the date a search period is applied to', function ():
 
 /**
  * The indexed relations of Content exactly as `getSearchMapping()` declared them before the Core `IndexedRelation`
- * helper (spec 2026-11-17-extended-entity-search-design.md, XS14): the pin the helper must reproduce.
+ * helper (spec 2026-11-17-extended-entity-search-design.md, XS14), without the hierarchy `path` Laraplate no longer
+ * computes: the pin the helper must reproduce.
  *
  * @return list<FieldDefinition>
  */
@@ -153,7 +154,6 @@ function content_indexed_relation_fields_before_helper(): array
         'name' => FieldType::Text,
         'id' => ['type' => FieldType::Integer, 'filterable' => true],
         'slug' => ['type' => FieldType::Keyword, 'filterable' => true],
-        'path' => ['type' => FieldType::Keyword, 'filterable' => true],
     ];
     $faceted = [IndexType::Searchable, IndexType::Filterable, IndexType::Facetable];
 
@@ -167,7 +167,6 @@ function content_indexed_relation_fields_before_helper(): array
                 'name' => FieldType::Text,
                 'id' => ['type' => FieldType::Integer, 'filterable' => true],
                 'slug' => ['type' => FieldType::Keyword, 'filterable' => true],
-                'path' => FieldType::Keyword,
                 'address' => FieldType::Text,
                 'city' => ['type' => FieldType::Keyword, 'filterable' => true],
                 'province' => ['type' => FieldType::Keyword, 'filterable' => true],
@@ -206,7 +205,7 @@ it('writes the indexed relations of Content with the keys and values they had be
 
     $document = $content->toSearchableArray();
     $before = static fn (iterable $records, array $keys): array => collect($records)->map(static fn ($record): array => $record->only($keys))->values()->all();
-    $base = ['id', 'name', 'slug', 'path'];
+    $base = ['id', 'name', 'slug'];
 
     // Compared by key and value: the helper lists `name` first, the code before it listed `id` first.
     expect($document['contributors'])->toEqual($before($content->contributors, $base))

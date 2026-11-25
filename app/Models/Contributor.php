@@ -17,7 +17,6 @@ use Modules\Core\Contracts\IDynamicEntityTypable;
 use Modules\Core\Contracts\IHidesAttributesFromAnonymous;
 use Modules\Core\Contracts\IPreloadsAppendedRelations;
 use Modules\Core\Contracts\ITranslatableModel;
-use Modules\Core\Models\Concerns\HasPath;
 use Modules\Core\Models\Concerns\HasTranslatedDynamicContents;
 use Modules\Core\Models\Concerns\HidesAttributesFromAnonymous;
 use Modules\Core\Models\User;
@@ -46,7 +45,6 @@ final class Contributor extends Model implements IHidesAttributesFromAnonymous, 
 {
     // region Traits
     use HasMultimedia;
-    use HasPath;
     use HasTags;
     use HasTranslatedDynamicContents {
         HasTranslatedDynamicContents::getRules as private getRulesTranslatedDynamicContents;
@@ -73,7 +71,7 @@ final class Contributor extends Model implements IHidesAttributesFromAnonymous, 
     ];
 
     /**
-     * Bridged user always comes from User on serialize / search / path, so it is
+     * Bridged user always comes from User on serialize / search, so it is
      * declared here rather than through a global scope: a closure scope is keyed by
      * spl_object_hash and cannot be lifted per query, which silently defeats
      * `->without('user')`. An always-loaded relation owned by a trait is declared the
@@ -159,19 +157,6 @@ final class Contributor extends Model implements IHidesAttributesFromAnonymous, 
         ]);
 
         return $rules;
-    }
-
-    public function getPathPrefix(): string
-    {
-        $entity = $this->entity;
-
-        return $entity !== null ? $entity->slug : '';
-    }
-
-    #[Override]
-    public function getPath(): null
-    {
-        return null;
     }
 
     protected static function getEntityType(): IDynamicEntityTypable

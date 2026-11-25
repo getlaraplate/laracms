@@ -223,11 +223,6 @@ it('has dynamic contents trait', function (): void {
     expect(method_exists($this->content, 'getDynamicFields'))->toBeTrue();
 });
 
-it('has path trait', function (): void {
-    expect(class_uses_recursive($this->content))->toContain(Modules\Core\Models\Concerns\HasPath::class);
-    expect(method_exists($this->content, 'getPath'))->toBeTrue();
-});
-
 it('has approvals trait', function (): void {
     expect(class_uses_recursive($this->content))->toContain(Modules\Core\Models\Concerns\HasApprovals::class);
 });

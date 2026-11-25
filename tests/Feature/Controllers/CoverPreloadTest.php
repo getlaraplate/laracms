@@ -249,12 +249,16 @@ describe('the media queries of a tree', function (): void {
     function coverpreload_tree(array $bearer, int $children): array
     {
         $root = Category::factory()->create();
-        DB::table($root->getTable())->where('id', $root->id)->update(['parent_id' => null, 'valid_from' => now()->subDay()]);
+        $root->parent_id = null;
+        $root->save();
+        DB::table($root->getTable())->where('id', $root->id)->update(['valid_from' => now()->subDay()]);
         coverpreload_cover($root);
 
         foreach (range(1, $children) as $ignored) {
             $child = Category::factory()->create();
-            DB::table($child->getTable())->where('id', $child->id)->update(['parent_id' => $root->id, 'valid_from' => now()->subDay()]);
+            $child->parent_id = $root->id;
+            $child->save();
+            DB::table($child->getTable())->where('id', $child->id)->update(['valid_from' => now()->subDay()]);
             coverpreload_cover($child);
         }
 

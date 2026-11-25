@@ -3,12 +3,10 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Modules\CMS\Casts\EntityType;
 use Modules\CMS\Models\Category;
 use Modules\CMS\Models\Content;
 use Modules\CMS\Tests\TestCase;
-use Modules\Core\Overrides\LocaleScope;
 
 uses(TestCase::class, RefreshDatabase::class);
 
@@ -26,7 +24,6 @@ it('content model uses correct traits', function (): void {
     expect($traits)->toContain(Illuminate\Database\Eloquent\Factories\HasFactory::class);
     expect($traits)->toContain(Modules\Core\Models\Concerns\HasTranslatedDynamicContents::class);
     expect($traits)->toContain(Modules\CMS\Helpers\HasMultimedia::class);
-    expect($traits)->toContain(Modules\Core\Models\Concerns\HasPath::class);
     expect($traits)->toContain(Modules\CMS\Helpers\HasTags::class);
     expect($traits)->toContain(Modules\Core\Models\Concerns\HasApprovals::class);
     expect($traits)->toContain(Modules\Core\Models\Concerns\HasValidations::class);
@@ -50,8 +47,6 @@ it('content model has required methods', function (): void {
     expect($reflection->hasMethod('toSearchableArray'))->toBeTrue();
     expect($reflection->hasMethod('getSearchMapping'))->toBeTrue();
     expect($reflection->hasMethod('getRules'))->toBeTrue();
-    expect($reflection->hasMethod('getPathPrefix'))->toBeTrue();
-    expect($reflection->hasMethod('getPath'))->toBeTrue();
     expect($reflection->hasMethod('toArray'))->toBeTrue();
 });
 
@@ -90,14 +85,6 @@ it('content model has correct method signatures', function (): void {
     $method = $reflection->getMethod('getRules');
     expect($method->getReturnType()->getName())->toBe('array');
 
-    // Test getPathPrefix method
-    $method = $reflection->getMethod('getPathPrefix');
-    expect($method->getReturnType()->getName())->toBe('string');
-
-    // Test getPath method
-    $method = $reflection->getMethod('getPath');
-    expect($method->getReturnType()->getName())->toBe('string');
-
     // Test toArray method
     $method = $reflection->getMethod('toArray');
     expect($method->getReturnType()->getName())->toBe('array');
@@ -123,44 +110,13 @@ it('toSearchableWith returns all required relations for indexing', function (): 
     expect($relations)->toContain('contributors')
         ->toContain('categories')
         ->toContain('categories.translations')
-        // Ancestors (with their translations) back the hierarchical `path` field,
-        // eager-loaded so serialization does not run a recursive query per category.
-        ->toContain('categories.ancestors.translations')
+        // The document carries no hierarchy path, so indexing loads no ancestors.
+        ->not->toContain('categories.ancestors.translations')
         ->toContain('tags')
         ->toContain('locations')
         ->toContain('translations')
         ->toContain('presettable.entity')
         ->toContain('presettable.preset');
-});
-
-it('serializes a content without a recursive ancestor query per category', function (): void {
-    setupCMSEntities([EntityType::Contents, EntityType::Categories]);
-
-    $parent = Category::factory()->create();
-    $parent->parent_id = null;
-    $parent->save();
-
-    $child = Category::factory()->create();
-    $child->parent_id = $parent->id;
-    $child->save();
-
-    $content = Content::factory()->create();
-    $content->categories()->attach($child->id);
-
-    // Fetch and eager-load exactly as the bulk indexing path does.
-    $models = Content::query()->withoutGlobalScope(LocaleScope::class)->whereKey($content->id)->get();
-    $models->first()->makeSearchableUsing($models);
-
-    DB::enableQueryLog();
-    $models->each(fn (Content $model) => $model->toSearchableArray());
-    $recursive = collect(DB::getQueryLog())
-        ->filter(static fn (array $q): bool => str_contains($q['query'], 'recursive'))
-        ->count();
-    DB::disableQueryLog();
-
-    // The hierarchical `path` reads the eager-loaded ancestor chain, so no
-    // recursive-ancestor CTE fires while building the document.
-    expect($recursive)->toBe(0);
 });
 
 it('declares filterable indexed relation fields in the content search schema', function (): void {

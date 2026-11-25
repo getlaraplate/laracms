@@ -31,8 +31,7 @@ it('category model uses correct traits', function (): void {
     expect($traits)->toContain(Modules\Core\Models\Concerns\HasActivation::class);
     expect($traits)->toContain(Modules\Core\Models\Concerns\HasApprovals::class);
     expect($traits)->toContain(Modules\CMS\Helpers\HasMultimedia::class);
-    expect($traits)->toContain(Modules\Core\Models\Concerns\HasPath::class);
-    expect($traits)->toContain(Staudenmeir\LaravelAdjacencyList\Eloquent\HasRecursiveRelationships::class);
+    expect($traits)->toContain(Modules\Core\Models\Concerns\HasClosureTable::class);
     expect($traits)->toContain(Modules\CMS\Helpers\HasTags::class);
     expect($traits)->toContain(Modules\Core\Models\Concerns\HasTranslatedDynamicContents::class);
     expect($traits)->toContain(Modules\Core\Models\Concerns\HasValidations::class);
@@ -48,8 +47,6 @@ it('category model has required methods', function (): void {
 
     expect($reflection->hasMethod('contents'))->toBeTrue();
     expect($reflection->hasMethod('getRules'))->toBeTrue();
-    expect($reflection->hasMethod('getPath'))->toBeTrue();
-    expect($reflection->hasMethod('appendPaths'))->toBeTrue();
     expect($reflection->hasMethod('toArray'))->toBeTrue();
 });
 
@@ -97,14 +94,6 @@ it('category model has correct method signatures', function (): void {
     // Test getRules method
     $method = $reflection->getMethod('getRules');
     expect($method->getReturnType()->getName())->toBe('array');
-
-    // Test getPath method
-    $method = $reflection->getMethod('getPath');
-    expect($method->getReturnType()->getName())->toBe('string');
-
-    // Test appendPaths method (declared on Taxonomy with return type self)
-    $method = $reflection->getMethod('appendPaths');
-    expect($method->getReturnType()->getName())->toBe(Taxonomy::class);
 
     // Test toArray method
     $method = $reflection->getMethod('toArray');

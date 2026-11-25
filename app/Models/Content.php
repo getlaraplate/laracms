@@ -46,7 +46,6 @@ use Modules\Core\Locking\Traits\HasLocks;
 use Modules\Core\Locking\Traits\HasOptimisticLocking;
 use Modules\Core\Models\Concerns\HasApprovals;
 use Modules\Core\Models\Concerns\HasExtensions;
-use Modules\Core\Models\Concerns\HasPath;
 use Modules\Core\Models\Concerns\HasTranslatedDynamicContents;
 use Modules\Core\Models\Concerns\HasValidity;
 use Modules\Core\Models\Concerns\SortableTrait;
@@ -106,7 +105,6 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
     use HasLocks;
     use HasMultimedia;
     use HasOptimisticLocking;
-    use HasPath;
     use HasTags;
     use HasTranslatedDynamicContents {
         HasTranslatedDynamicContents::getRules as private getRulesTranslatedDynamicContents;
@@ -420,12 +418,7 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
         return [
             'contributors',
             'categories',
-            // Categories are hierarchical: the `path` field serialized below walks
-            // each category's ancestors (translated slugs). Eager-load them here so
-            // building the document reads the loaded chain instead of firing one
-            // recursive-ancestor query per category per content.
             'categories.translations',
-            'categories.ancestors.translations',
             'tags',
             'locations',
             'references',
@@ -608,18 +601,6 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
         return $rules;
     }
 
-    public function getPathPrefix(): string
-    {
-        $entity = $this->entity;
-
-        return $entity !== null ? $entity->slug : '';
-    }
-
-    public function getPath(): ?string
-    {
-        return $this->categories->first()?->getPath();
-    }
-
     public function toArray(): array
     {
         $parsed = parent::toArray();
@@ -773,7 +754,8 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
     /**
      * The relations indexed in the search document, declared once for the document and the mapping (Core
      * {@see IndexedRelation}, spec 2026-11-17-extended-entity-search-design.md, XS14). `tags` names are keywords;
-     * `locations` add the address fields, keep `path` unfiltered and are not facets.
+     * `locations` add the address fields and are not facets. No relation carries a hierarchy `path`: Laraplate
+     * computes none.
      *
      * @return list<IndexedRelation>
      */
@@ -786,7 +768,6 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
             new IndexedRelation('categories'),
             new IndexedRelation('tags', properties: ['name' => FieldType::Keyword]),
             new IndexedRelation('locations', properties: [
-                'path' => FieldType::Keyword,
                 'address' => FieldType::Text,
                 'city' => $keyword_filter,
                 'province' => $keyword_filter,

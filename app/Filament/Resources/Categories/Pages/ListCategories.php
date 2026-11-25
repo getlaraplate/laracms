@@ -26,6 +26,6 @@ final class ListCategories extends ListRecords
         /** @var class-string<Category> $model */
         $model = self::getResource()::getModel();
 
-        return $model::query()->withAncestorsForPath();
+        return $model::query()->with('ancestors');
     }
 }
