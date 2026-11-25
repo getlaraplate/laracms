@@ -179,11 +179,11 @@ final class ContentFactory extends Factory
 
         // components are available after base fillDynamicContents(); now we can adjust derived fields.
         if (array_key_exists('period_to', $model->components) && fake()->boolean()) {
-            $model->period_to = max(fake()->dateTime($model->valid_to ?? 'now'), $model->valid_from)->format('Y-m-d H:i:s');
+            $model->setAttribute('period_to', max(fake()->dateTime($model->valid_to ?? 'now'), $model->valid_from)->format('Y-m-d H:i:s'));
         }
 
         if (array_key_exists('period_from', $model->components)) {
-            $model->period_from = max(fake()->dateTime($model->components['period_to'] ?? $model->valid_to ?? 'now'), $model->valid_from)->format('Y-m-d H:i:s');
+            $model->setAttribute('period_from', max(fake()->dateTime($model->components['period_to'] ?? $model->valid_to ?? 'now'), $model->valid_from)->format('Y-m-d H:i:s'));
         }
     }
 
