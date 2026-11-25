@@ -31,7 +31,7 @@ final class DevCMSDatabaseSeeder extends BatchSeeder
 
     protected function execute(): void
     {
-        Artisan::call('module:seed', ['module' => 'CMS', '--force' => $this->command->option('force')], outputBuffer: $this->command->getOutput());
+        Artisan::call('module:seed', ['module' => 'CMS', '--force' => $this->console()->option('force')], outputBuffer: $this->console()->getOutput());
 
         ModelObserver::disableSyncingFor(Content::class);
         ModelObserver::disableSyncingFor(Location::class);
@@ -94,7 +94,7 @@ final class DevCMSDatabaseSeeder extends BatchSeeder
         $content_ids = $pools['contents'];
 
         if ($content_ids === []) {
-            $this->command->info('No contents to relate.');
+            $this->console()->info('No contents to relate.');
 
             return;
         }
@@ -106,7 +106,7 @@ final class DevCMSDatabaseSeeder extends BatchSeeder
         $pending_ids = $factory->idsMissingRequiredRelations($content_ids);
         $already_related = count($content_ids) - count($pending_ids);
 
-        $this->command->info(sprintf(
+        $this->console()->info(sprintf(
             'Pivot relations: %d contents, %d need relations, %d already related.',
             count($content_ids),
             count($pending_ids),
@@ -114,7 +114,7 @@ final class DevCMSDatabaseSeeder extends BatchSeeder
         ));
 
         if ($pending_ids === []) {
-            $this->command->info('All contents already have required pivot relations.');
+            $this->console()->info('All contents already have required pivot relations.');
 
             return;
         }
@@ -137,6 +137,6 @@ final class DevCMSDatabaseSeeder extends BatchSeeder
 
         $this->runParallelTasks($tasks, 'Creating pivot relations (parallel)', $connection_name, self::PIVOT_CHUNK_SIZE);
 
-        $this->command->info('Pivot relations created successfully!');
+        $this->console()->info('Pivot relations created successfully!');
     }
 }
