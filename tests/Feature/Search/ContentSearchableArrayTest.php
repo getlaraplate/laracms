@@ -198,6 +198,7 @@ it('maps the indexed relations of Content as they were declared before the index
 
 it('writes the indexed relations of Content with the keys and values they had before the indexed-relation helper', function (): void {
     $content = createBilingualSearchableContent('Titolo di prova', 'Test title');
+    setupCMSEntities([EntityType::Contributors, EntityType::Categories]);
     $content->setRelation('contributors', Contributor::factory()->count(2)->create());
     $content->setRelation('categories', Category::factory()->count(2)->create());
     $content->setRelation('tags', Tag::factory()->count(2)->create());
