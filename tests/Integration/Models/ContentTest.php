@@ -120,16 +120,18 @@ it('toSearchableWith returns all required relations for indexing', function (): 
 });
 
 it('declares filterable indexed relation fields in the content search schema', function (): void {
-    $reflection = new ReflectionClass(Content::class);
-    $source = file_get_contents((string) $reflection->getFileName());
+    setupCMSEntities([EntityType::Contents]);
+    config(['scout.driver' => 'elasticsearch']);
 
-    expect($source)->toContain("'relation' => 'contributors'")
-        ->and($source)->toContain("'relation' => 'categories'")
-        ->and($source)->toContain("'relation' => 'tags'")
-        ->and($source)->toContain("'relation' => 'locations'")
-        ->and($source)->toContain("'id' => ['type' => FieldType::Integer, 'filterable' => true]")
-        ->and($source)->toContain("'slug' => ['type' => FieldType::Keyword, 'filterable' => true]")
-        ->and($source)->toContain("'country' => ['type' => FieldType::Keyword, 'filterable' => true]");
+    $properties = new Content()->getSearchMapping()['mappings']['properties'];
+
+    foreach (['contributors', 'categories', 'tags', 'locations'] as $relation) {
+        expect($properties[$relation]['meta']['relation'] ?? null)->toBe($relation)
+            ->and($properties[$relation]['properties']['id']['meta']['filterable'] ?? null)->toBeTrue()
+            ->and($properties[$relation]['properties']['slug']['meta']['filterable'] ?? null)->toBeTrue();
+    }
+
+    expect($properties['locations']['properties']['country']['meta']['filterable'] ?? null)->toBeTrue();
 });
 
 /**
