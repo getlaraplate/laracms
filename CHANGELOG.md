@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.50.1] - 2026-11-25
+
+### 🐛 Bug Fixes
+
+- *(cms)* Type what Larastan's column check reports in CMS
+
+### 🧪 Testing
+
+- *(stubs)* The versioned extender stub implements IVersionedModel
+
 ## [1.50.0] - 2026-11-25
 
 ### 🐛 Bug Fixes
