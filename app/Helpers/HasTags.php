@@ -250,7 +250,7 @@ trait HasTags
 
         foreach ($resolved_tags as $tag) {
             $query->whereHas('tags', function (Builder $tag_query) use ($tag): void {
-                $tag_query->whereRaw('tags.id = ?', [$tag->id ?? 0]);
+                $tag_query->whereKey($tag->id ?? 0);
             });
         }
 
@@ -272,7 +272,7 @@ trait HasTags
         $tag_ids = $resolved_tags->pluck('id')->filter(static fn (mixed $id): bool => $id !== null)->values();
 
         return $query->whereHas('tags', function (Builder $tag_query) use ($tag_ids): void {
-            $tag_query->whereIn('tags.id', $tag_ids->all());
+            $tag_query->whereKey($tag_ids->all());
         });
     }
 
@@ -291,7 +291,7 @@ trait HasTags
         $tag_ids = $resolved_tags->pluck('id')->filter(static fn (mixed $id): bool => $id !== null)->values();
 
         return $query->whereDoesntHave('tags', function (Builder $tag_query) use ($tag_ids): void {
-            $tag_query->whereIn('tags.id', $tag_ids->all());
+            $tag_query->whereKey($tag_ids->all());
         });
     }
 
@@ -308,7 +308,7 @@ trait HasTags
         foreach ($resolved_tags as $tag) {
             $query->whereHas(
                 'tags',
-                fn (Builder $tag_query): Builder => $tag_query->whereRaw('tags.id = ?', [$tag->id ?? 0]),
+                fn (Builder $tag_query): Builder => $tag_query->whereKey($tag->id ?? 0),
             );
         }
 
@@ -328,7 +328,7 @@ trait HasTags
 
         return $query->whereHas(
             'tags',
-            fn (Builder $tag_query): Builder => $tag_query->whereIn('tags.id', $tag_ids->all()),
+            fn (Builder $tag_query): Builder => $tag_query->whereKey($tag_ids->all()),
         );
     }
 

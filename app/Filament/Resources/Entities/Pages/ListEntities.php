@@ -26,7 +26,8 @@ final class ListEntities extends ListRecords
     {
         $counts_by_type = [];
         $rows = Entity::query()
-            ->selectRaw('type, count(*) as aggregate_count')
+            ->select('type')
+            ->selectRaw('count(*) as aggregate_count')
             ->groupBy('type')
             ->get();
 

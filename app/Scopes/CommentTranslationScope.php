@@ -19,6 +19,8 @@ use Modules\Core\Helpers\LocaleContext;
 final class CommentTranslationScope implements Scope
 {
     /**
+     * The `locale` column of the preference order goes through the grammar: it is a reserved word on Db2.
+     *
      * @param  Builder<covariant Comment>  $builder
      */
     public function apply(Builder $builder, Model $model): void
@@ -28,7 +30,7 @@ final class CommentTranslationScope implements Scope
         $builder->whereHas('translations');
 
         $builder->with(['translation' => static function (Relation $relation) use ($current_locale): void {
-            $relation->orderByRaw('CASE WHEN locale = ? THEN 0 ELSE 1 END', [$current_locale])
+            $relation->orderByRaw(sprintf('CASE WHEN %s = ? THEN 0 ELSE 1 END', $relation->getGrammar()->wrap('locale')), [$current_locale])
                 ->orderBy('created_at')
                 ->orderBy('id');
         }]);

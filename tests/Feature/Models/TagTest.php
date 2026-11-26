@@ -8,6 +8,7 @@ use Modules\CMS\Models\Content;
 use Modules\CMS\Models\Tag;
 use Modules\CMS\Models\Translations\TagTranslation;
 use Modules\CMS\Tests\TestCase;
+use Modules\Core\Tests\Stubs\Database\Db2PretendConnection;
 
 uses(TestCase::class, RefreshDatabase::class);
 
@@ -529,3 +530,32 @@ it('finds again a tag whose name the slugger changes', function (string $name): 
     expect(Tag::findOrCreateFromString($name)->id)->toBe($tag->id)
         ->and(Tag::query()->count())->toBe(1);
 })->with(['Web 2.0', 'node.js', 'Rock@Night']);
+
+it('filters models by their tags through every tag scope', function (): void {
+    $jazz_and_blues = Content::factory()->create(['valid_from' => now()->subDay(), 'valid_to' => null]);
+    $jazz_and_blues->attachTag('Jazz', 'Genre');
+    $jazz_and_blues->attachTag('Blues', 'Genre');
+    $jazz = Content::factory()->create(['valid_from' => now()->subDay(), 'valid_to' => null]);
+    $jazz->attachTag('Jazz', 'Genre');
+
+    $ids = static fn (Illuminate\Database\Eloquent\Builder $query): array => $query->pluck($query->getModel()->getQualifiedKeyName())->sort()->values()->all();
+
+    expect($ids(Content::query()->withAllTags(['Jazz', 'Blues'], 'Genre')))->toBe([$jazz_and_blues->id])
+        ->and($ids(Content::query()->withAnyTags(['Blues'], 'Genre')))->toBe([$jazz_and_blues->id])
+        ->and($ids(Content::query()->withoutTags(['Blues'], 'Genre')->whereKey([$jazz->id, $jazz_and_blues->id])))->toBe([$jazz->id])
+        ->and($ids(Content::query()->withAllTagsOfAnyType(['Jazz', 'Blues'])))->toBe([$jazz_and_blues->id])
+        ->and($ids(Content::query()->withAnyTagsOfAnyType(['Blues'])))->toBe([$jazz_and_blues->id]);
+});
+
+it('compares the tag key through the grammar in the tag scopes on Db2', function (): void {
+    $tag = Tag::findOrCreateFromString('Jazz', 'Genre');
+    $sql = '';
+
+    Db2PretendConnection::capture(static function () use ($tag, &$sql): void {
+        $sql = Content::query()->withAllTags($tag)->withAllTagsOfAnyType($tag)->withAnyTags($tag)->toSql();
+    });
+
+    expect($sql)->toContain('cms_tags."ID" = ?')
+        ->and($sql)->toContain('cms_tags."ID" in (')
+        ->and($sql)->not->toContain('tags.id');
+});

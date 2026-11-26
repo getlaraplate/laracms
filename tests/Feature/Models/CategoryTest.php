@@ -6,6 +6,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\CMS\Models\Category;
 use Modules\CMS\Models\Content;
 use Modules\CMS\Tests\TestCase;
+use Modules\Core\Helpers\LocaleContext;
+use Modules\Core\Tests\Stubs\Database\Db2PretendConnection;
 
 uses(TestCase::class, RefreshDatabase::class);
 
@@ -284,3 +286,16 @@ it('loads the ancestors in depth order from the database whatever the sibling po
     'root 1, child 3, grandchild 2' => [1, 3, 2],
     'root 3, child 1, grandchild 2' => [3, 1, 2],
 ]);
+
+it('quotes the reserved locale column in the translation order of a taxonomy on Db2', function (): void {
+    // Warm the fallback setting on SQLite: the pretend connection answers no query.
+    expect($this->category->translationFallbackEnabledBySettings())->toBeTrue();
+    $sql = '';
+
+    Db2PretendConnection::capture(static function () use (&$sql): void {
+        LocaleContext::set('it');
+        $sql = (new Category)->setConnection('db2_pretend')->translation()->toSql();
+    });
+
+    expect($sql)->toContain('order by CASE WHEN "LOCALE" = ? THEN 0 ELSE 1 END');
+});

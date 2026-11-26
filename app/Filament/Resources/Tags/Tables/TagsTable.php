@@ -39,19 +39,21 @@ final class TagsTable
 
     /**
      * The slug the row shows: the content locale's, or the default locale's where that one is missing. Filament
-     * appends the key, so tags with the same slug follow their id.
+     * appends the key, so tags with the same slug follow their id. The `locale` column of the preference order goes
+     * through the grammar: it is a reserved word on Db2.
      *
      * @return Builder<TagTranslation>
      */
     private static function shownSlug(): Builder
     {
         $locale = LocaleContext::get();
+        $query = TagTranslation::query();
 
-        return TagTranslation::query()
+        return $query
             ->select('slug')
             ->whereColumn(new TagTranslation()->qualifyColumn('tag_id'), new Tag()->qualifyColumn('id'))
             ->whereIn('locale', array_unique([$locale, LocaleContext::getDefault()]))
-            ->orderByRaw('CASE WHEN locale = ? THEN 0 ELSE 1 END', [$locale])
+            ->orderByRaw(sprintf('CASE WHEN %s = ? THEN 0 ELSE 1 END', $query->getGrammar()->wrap('locale')), [$locale])
             ->limit(1);
     }
 }

@@ -9,9 +9,12 @@ use Modules\CMS\Tests\TestCase;
 uses(TestCase::class, RefreshDatabase::class);
 
 use Modules\CMS\Models\Comment;
+use Modules\CMS\Models\Translations\CommentTranslation;
+use Modules\CMS\Scopes\CommentTranslationScope;
 use Modules\Core\Helpers\LocaleContext;
 use Modules\Core\Models\Modification;
 use Modules\Core\Models\User;
+use Modules\Core\Tests\Stubs\Database\Db2PretendConnection;
 
 beforeEach(function (): void {
     setupCMSEntities();
@@ -67,4 +70,24 @@ it('belongs to content', function (): void {
 
 it('uses cms comments table name from enum', function (): void {
     expect((new Comment())->getTable())->toBe(CMSTables::Comments->value);
+});
+
+it('quotes the reserved locale column in the comment translation orders on Db2', function (): void {
+    // Warm the fallback setting on SQLite: the pretend connection answers no query.
+    expect((new Comment)->translationFallbackEnabledBySettings())->toBeTrue();
+    $orders = [];
+
+    Db2PretendConnection::capture(static function () use (&$orders): void {
+        $comment = (new Comment)->setConnection('db2_pretend');
+        $orders[] = $comment->translation()->toSql();
+
+        $builder = $comment->newQueryWithoutScopes();
+        (new CommentTranslationScope)->apply($builder, $comment);
+        $relation = $comment->hasOne(CommentTranslation::class);
+        $builder->getEagerLoads()['translation']($relation);
+        $orders[] = $relation->toSql();
+    });
+
+    expect($orders[0])->toContain('order by CASE WHEN "LOCALE" = ? THEN 0 ELSE 1 END')
+        ->and($orders[1])->toContain('order by CASE WHEN "LOCALE" = ? THEN 0 ELSE 1 END');
 });

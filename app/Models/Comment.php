@@ -196,6 +196,8 @@ final class Comment extends Model implements IHidesAttributesFromAnonymous, INev
     }
 
     /**
+     * The `locale` column of the preference order goes through the grammar: it is a reserved word on Db2.
+     *
      * @return HasOne<CommentTranslation, $this>
      */
     public function translation(): HasOne
@@ -207,7 +209,7 @@ final class Comment extends Model implements IHidesAttributesFromAnonymous, INev
 
         if ($fallback_enabled) {
             $relation
-                ->orderByRaw('CASE WHEN locale = ? THEN 0 ELSE 1 END', [$current_locale])
+                ->orderByRaw(sprintf('CASE WHEN %s = ? THEN 0 ELSE 1 END', $relation->getGrammar()->wrap('locale')), [$current_locale])
                 ->orderBy('created_at')
                 ->orderBy('id');
         } else {
