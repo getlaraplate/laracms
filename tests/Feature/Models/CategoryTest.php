@@ -9,7 +9,7 @@ use Modules\CMS\Tests\TestCase;
 use Modules\Core\Helpers\LocaleContext;
 use Modules\Core\Tests\Stubs\Database\Db2PretendConnection;
 
-uses(TestCase::class, RefreshDatabase::class);
+uses(TestCase::class, RefreshDatabase::class)->group('db2');
 
 beforeEach(function (): void {
     $category = new Category;
