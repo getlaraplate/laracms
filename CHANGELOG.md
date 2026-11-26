@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.50.2] - 2026-11-26
+
+### 🐛 Bug Fixes
+
+- *(cms)* Drop the comments closure table by its literal name in the migration
+
 ## [1.50.1] - 2026-11-25
 
 ### 🐛 Bug Fixes
