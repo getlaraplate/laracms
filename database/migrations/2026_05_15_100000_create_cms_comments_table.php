@@ -59,7 +59,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists(CMSTables::CommentsClosure->value);
+        Schema::dropIfExists('cms_comments_closure');
         Schema::dropIfExists(CMSTables::CommentsTranslations->value);
         Schema::dropIfExists(CMSTables::Comments->value);
     }
