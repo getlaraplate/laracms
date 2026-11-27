@@ -60,6 +60,7 @@ return [
         'entity' => 'Entität',
         'location' => 'Ort',
         'media_images' => 'Bilder',
+        'no_type' => 'Kein Typ',
         'order_column' => 'Position',
         'parent' => 'Übergeordnet',
         'postcode' => 'PLZ',
@@ -113,5 +114,13 @@ return [
         'expiringSoonHint' => 'Veröffentlichte Inhalte, die bald ablaufen',
         'scheduled' => 'Geplant',
         'scheduledHint' => 'Inhalte, die auf die Veröffentlichung warten',
+    ],
+    'tag_types' => [
+        'search' => 'Suche',
+        'people' => 'Personen',
+        'locations' => 'Orte',
+        'organizations' => 'Organisationen',
+        'topics' => 'Themen',
+        'events' => 'Ereignisse',
     ],
 ];

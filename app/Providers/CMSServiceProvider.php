@@ -18,12 +18,16 @@ use Modules\CMS\Models\Comment;
 use Modules\CMS\Models\Content;
 use Modules\CMS\Models\ContentReference;
 use Modules\CMS\Models\Translations\ContentTranslation;
+use Modules\CMS\Models\Translations\TagTranslation;
 use Modules\CMS\Observers\ContentExtensionObserver;
 use Modules\CMS\Observers\ContentReferenceObserver;
 use Modules\CMS\Observers\ContentTranslationObserver;
 use Modules\CMS\Observers\PlaceObserver;
+use Modules\CMS\Observers\TagTranslationObserver;
 use Modules\CMS\Services\CommentModerationAdapter;
 use Modules\CMS\Services\ContentOwnerAuthorizer;
+use Modules\CMS\Services\TagTypeDefinition;
+use Modules\CMS\Services\TagTypeRegistry;
 use Modules\Core\ApplicationContent\Contracts\ApplicationContentRetrievalProviderRegistryInterface;
 use Modules\Core\Enums\CoreTables;
 use Modules\Core\Graph\Contracts\GraphProviderRegistryInterface;
@@ -61,6 +65,8 @@ final class CMSServiceProvider extends ModuleServiceProvider
     {
         parent::register();
 
+        $this->app->singleton(TagTypeRegistry::class);
+
         $this->app->register(ImportServiceProvider::class);
     }
 
@@ -96,8 +102,24 @@ final class CMSServiceProvider extends ModuleServiceProvider
         // A reference is part of its content's search document: re-send the content when one changes.
         ContentReference::observe(ContentReferenceObserver::class);
 
+        // Tag names are part of the search document of the contents carrying the tag: re-send them when one changes.
+        TagTranslation::observe(TagTranslationObserver::class);
+
         // Content-extension seam: apply a direct content deletion to its extender (C9, C10).
         Content::observe(ContentExtensionObserver::class);
+
+        $tagTypes = $this->app->make(TagTypeRegistry::class);
+
+        foreach ([
+            'search' => ['heroicon-o-magnifying-glass', 'Search'],
+            'people' => ['heroicon-o-users', 'Users'],
+            'locations' => ['heroicon-o-map-pin', 'MapPin'],
+            'organizations' => ['heroicon-o-building-office', 'Building2'],
+            'topics' => ['heroicon-o-hashtag', 'Hash'],
+            'events' => ['heroicon-o-calendar', 'Calendar'],
+        ] as $type => [$heroicon, $lucide]) {
+            $tagTypes->register(new TagTypeDefinition($type, 'cms.tag_types.' . $type, $heroicon, $lucide));
+        }
 
         // A content's hard delete removes its comments by cascade, with no event on them: Core's observer keeps
         // their closure in step through the cascades registered below.

@@ -60,6 +60,7 @@ return [
         'entity' => 'Entiteta',
         'location' => 'Lokacija',
         'media_images' => 'Slike',
+        'no_type' => 'Brez vrste',
         'order_column' => 'Položaj',
         'parent' => 'Nadrejeno',
         'postcode' => 'Poštna številka',
@@ -113,5 +114,13 @@ return [
         'expiringSoonHint' => 'Objavljene vsebine, ki bodo kmalu potekle',
         'scheduled' => 'Načrtovane',
         'scheduledHint' => 'Vsebine, ki čakajo na objavo',
+    ],
+    'tag_types' => [
+        'search' => 'Iskanje',
+        'people' => 'Osebe',
+        'locations' => 'Lokacije',
+        'organizations' => 'Organizacije',
+        'topics' => 'Teme',
+        'events' => 'Dogodki',
     ],
 ];

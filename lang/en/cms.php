@@ -60,6 +60,7 @@ return [
         'entity' => 'Entity',
         'location' => 'Location',
         'media_images' => 'Images',
+        'no_type' => 'No type',
         'order_column' => 'Position',
         'parent' => 'Parent',
         'postcode' => 'Postcode',
@@ -113,5 +114,13 @@ return [
         'expiringSoonHint' => 'Published contents about to expire',
         'scheduled' => 'Scheduled',
         'scheduledHint' => 'Contents waiting to go live',
+    ],
+    'tag_types' => [
+        'search' => 'Search',
+        'people' => 'People',
+        'locations' => 'Locations',
+        'organizations' => 'Organizations',
+        'topics' => 'Topics',
+        'events' => 'Events',
     ],
 ];

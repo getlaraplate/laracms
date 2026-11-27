@@ -19,12 +19,11 @@ beforeEach(function (): void {
     HttpContext::panelActorWithoutApproval(new Tag, ['select', 'insert']);
 });
 
-it('offers the tag types already in use', function (): void {
+it('offers the registered tag types and the types already in use', function (): void {
     Livewire::test(CreateTag::class)
-        ->assertFormFieldExists('type', static fn (Select $field): bool => $field->getOptions() === [
-            'genre' => 'genre',
-            'musical-instrument' => 'musical-instrument',
-        ]);
+        ->assertFormFieldExists('type', static fn (Select $field): bool => [
+            'search', 'people', 'locations', 'organizations', 'topics', 'events', 'genre', 'musical-instrument',
+        ] === array_keys($field->getOptions()));
 });
 
 it('offers, while the type is typed, the types in use that contain it and what is typed as a slug', function (string $search, array $results): void {

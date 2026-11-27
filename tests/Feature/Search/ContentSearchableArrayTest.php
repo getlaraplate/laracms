@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\CMS\Casts\EntityType;
 use Modules\CMS\Models\Category;
@@ -16,6 +17,7 @@ use Modules\CMS\Models\Tag;
 use Modules\CMS\Models\Translations\ContentTranslation;
 use Modules\CMS\Tests\TestCase;
 use Modules\Core\Search\DTOs\VectorProfile;
+use Modules\Core\Search\Engines\ElasticsearchLocaleTextFields;
 use Modules\Core\Search\Schema\FieldDefinition;
 use Modules\Core\Search\Schema\FieldType;
 use Modules\Core\Search\Schema\IndexType;
@@ -139,6 +141,75 @@ it('declares the Content embeddings field without a nested vector when there is 
 
 it('declares valid_from as the date a search period is applied to', function (): void {
     expect(new Content()->searchDateField())->toBe('valid_from');
+});
+
+/**
+ * Attach a Cinema tag (it + en) and a Bici tag (it only) to a bilingual content.
+ */
+function attachTagsWithMissingTranslation(Content $content): void
+{
+    $cinema = Tag::factory()->create();
+    $bici = Tag::factory()->create();
+
+    $cinema->translations()->forceDelete();
+    $bici->translations()->forceDelete();
+
+    foreach ([[$cinema, 'it', 'Cinema'], [$cinema, 'en', 'Cinema'], [$bici, 'it', 'Bici elettrica']] as [$tag, $locale, $name]) {
+        $tag->translations()->create(['locale' => $locale, 'name' => $name, 'slug' => Str::slug($name)]);
+    }
+
+    $content->tags()->sync([$cinema->id, $bici->id]);
+}
+
+it('indexes tag names per locale from explicit translations only', function (): void {
+    $content = createBilingualSearchableContent('Titolo di prova', 'Test title');
+    attachTagsWithMissingTranslation($content);
+
+    $document = Content::query()->findOrFail($content->id)->load(new Content()->toSearchableWith())->toSearchableArray();
+
+    expect($document['tag_names'])->toEqual(['it' => ['Cinema', 'Bici elettrica'], 'en' => ['Cinema']]);
+});
+
+it('declares tag_names as a locale-keyed text object that the keyword query reaches', function (): void {
+    $content = createBilingualSearchableContent('Titolo di prova', 'Test title');
+    config(['scout.driver' => 'elasticsearch']);
+
+    $properties = $content->getSearchMapping()['mappings']['properties']['tag_names']['properties'];
+    $fields = ElasticsearchLocaleTextFields::fromProperties(
+        ['tag_names' => ['type' => 'object', 'properties' => $properties]],
+        ['it'],
+        ['it', 'en'],
+    );
+
+    expect($properties)->toHaveKeys(['it', 'en'])
+        ->and($fields)->toContain('tag_names.it')
+        ->and($fields)->not->toContain('tag_names.en');
+});
+
+it('keeps tag names out of the embedding header', function (): void {
+    $content = createBilingualSearchableContent('Titolo di prova', 'Test title');
+    attachTagsWithMissingTranslation($content);
+
+    expect($content->fresh(['translations', 'tags.translations'])->embedHeader('it'))->not->toContain('Bici elettrica');
+});
+
+it('builds tag names from the preloaded relations without further queries', function (): void {
+    $content = createBilingualSearchableContent('Titolo di prova', 'Test title');
+    attachTagsWithMissingTranslation($content);
+
+    $loaded = Content::query()->findOrFail($content->id)->load(new Content()->toSearchableWith());
+
+    $queries = [];
+    DB::listen(static function ($query) use (&$queries): void {
+        $queries[] = $query->sql;
+    });
+
+    $document = $loaded->toSearchableArray();
+
+    $tagQueries = array_filter($queries, static fn (string $sql): bool => str_contains($sql, 'tags'));
+
+    expect($document['tag_names'])->toEqual(['it' => ['Cinema', 'Bici elettrica'], 'en' => ['Cinema']])
+        ->and($tagQueries)->toBe([]);
 });
 
 /**

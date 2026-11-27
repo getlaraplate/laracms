@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Modules\CMS\Models\Tag;
 use Modules\CMS\Models\Translations\TagTranslation;
+use Modules\CMS\Services\TagTypeRegistry;
 use Modules\Core\Filament\Utils\HasTable;
 use Modules\Core\Helpers\LocaleContext;
 
@@ -29,6 +30,13 @@ final class TagsTable
                         ->searchable()
                         ->toggleable(isToggledHiddenByDefault: true),
                     TextColumn::make('type')
+                        ->default(static fn (): string => __('cms.fields.no_type'))
+                        ->icon(static fn (Tag $record): ?string => resolve(TagTypeRegistry::class)->heroiconFor($record->type))
+                        ->formatStateUsing(static function (Tag $record, string $state): string {
+                            $letter = resolve(TagTypeRegistry::class)->letterFor($record->type);
+
+                            return $letter === null ? $state : $letter . ' ' . $state;
+                        })
                         ->searchable()
                         ->toggleable(isToggledHiddenByDefault: false),
                 ]);

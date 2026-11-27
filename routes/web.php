@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\CMS\Http\Controllers\InsightsController;
 use Modules\CMS\Http\Controllers\LocationsController;
+use Modules\CMS\Http\Controllers\TagTypesController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,4 +24,8 @@ Route::middleware('auth')->prefix('cms/locations')->group(function (): void {
 
 Route::middleware('auth')->prefix('cms/insights')->group(function (): void {
     Route::get('/graph/tags', [InsightsController::class, 'tagGraph'])->name('insights.tag-graph');
+});
+
+Route::middleware('auth')->prefix('cms/tag-types')->group(function (): void {
+    Route::get('/', [TagTypesController::class, 'index'])->name('tag-types.index');
 });

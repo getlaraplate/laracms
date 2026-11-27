@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\CMS\Casts\EntityType;
@@ -25,7 +26,9 @@ use Modules\CMS\Models\Pivot\Categorizable;
 use Modules\CMS\Models\Pivot\Contributable;
 use Modules\CMS\Models\Pivot\Locatable;
 use Modules\CMS\Models\Pivot\Relatable;
+use Modules\CMS\Models\Pivot\Taggable as TaggablePivot;
 use Modules\CMS\Models\Translations\ContentTranslation;
+use Modules\CMS\Models\Translations\TagTranslation;
 use Modules\CMS\Observers\ContentObserver;
 use Modules\Core\Approvals\Operation;
 use Modules\Core\Contracts\IDynamicContentModel;
@@ -50,6 +53,7 @@ use Modules\Core\Models\Concerns\HasTranslatedDynamicContents;
 use Modules\Core\Models\Concerns\HasValidity;
 use Modules\Core\Models\Concerns\SortableTrait;
 use Modules\Core\Models\RecordOrigin;
+use Modules\Core\Overrides\LocaleScope;
 use Modules\Core\Overrides\Model;
 use Modules\Core\Search\Contracts\IProvidesRerankerText;
 use Modules\Core\Search\DTOs\VectorProfile;
@@ -213,7 +217,7 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
         $texts = [];
 
         $contents = self::query()
-            ->withoutGlobalScope(\Modules\Core\Overrides\LocaleScope::class)
+            ->withoutGlobalScope(LocaleScope::class)
             ->whereKey($keys)
             ->with('translations')
             ->get();
@@ -289,6 +293,23 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
         return $this->belongsToMany(Category::class, CMSTables::Categorizables->value, 'content_id', 'taxonomy_id')
             ->using(Categorizable::class)
             ->withTimestamps();
+    }
+
+    /**
+     * The tags of the content in every language: `tags()` is narrowed by the Tag
+     * LocaleScope to the tags translated in the active language, this is not.
+     * Used to index the tag names of all languages.
+     *
+     * @return MorphToMany<Tag, $this, TaggablePivot, 'pivot'>
+     */
+    public function tagsAcrossLocales(): MorphToMany
+    {
+        return $this
+            ->morphToMany(Tag::class, 'taggable', CMSTables::Taggables->value)
+            ->using(TaggablePivot::class)
+            ->withTimestamps()
+            ->withoutGlobalScope(LocaleScope::class)
+            ->ordered();
     }
 
     /**
@@ -420,6 +441,7 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
             'categories',
             'categories.translations',
             'tags',
+            'tagsAcrossLocales.translations',
             'locations',
             'references',
             'translations',
@@ -477,6 +499,7 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
         $document['title'] = $title;
         $document['slug'] = $slug;
         $document['locales'] = $locales;
+        $document['tag_names'] = $this->tagNamesByLocale(array_values($available));
 
         foreach ($components as $field => $byLocale) {
             $document[$field] = $byLocale;
@@ -540,6 +563,7 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
 
         $schema->addField(new FieldDefinition('title', FieldType::Object, [IndexType::Searchable, IndexType::Fuzzy], ['locale_properties' => $localeText]));
         $schema->addField(new FieldDefinition('slug', FieldType::Object, [IndexType::Searchable], ['locale_properties' => $localeKeyword]));
+        $schema->addField(new FieldDefinition('tag_names', FieldType::Object, [IndexType::Searchable, IndexType::FullText], ['locale_properties' => $localeText]));
         $schema->addField(new FieldDefinition('locales', FieldType::Keyword, [IndexType::Searchable, IndexType::Filterable, IndexType::Facetable]));
         $profile = VectorProfileContext::get();
         $schema->addField(new FieldDefinition('embeddings', FieldType::Array, [IndexType::Searchable, IndexType::Vector], $profile instanceof VectorProfile
@@ -776,6 +800,41 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, IEm
                 'zone' => $keyword_filter,
             ], indexTypes: [IndexType::Searchable, IndexType::Filterable]),
         ];
+    }
+
+    /**
+     * Names of the tags per language, from explicit translations only: a tag
+     * without a translation in a language adds nothing there, so a search in a
+     * language never matches a name written in another one. The `tags` relation
+     * is narrowed by LocaleScope to the tags translated in the active language,
+     * so this reads the `tagsAcrossLocales` relation and its translations, preloaded by `toSearchableWith()`.
+     *
+     * @param  list<string>  $locales
+     * @return array<string, list<string>>
+     */
+    private function tagNamesByLocale(array $locales): array
+    {
+        $tags = $this->tagsAcrossLocales;
+        $byLocale = [];
+
+        foreach ($locales as $locale) {
+            $names = [];
+
+            foreach ($tags as $tag) {
+                $translation = $tag->translations->firstWhere('locale', $locale);
+                $name = $translation instanceof TagTranslation ? $translation->name : null;
+
+                if (is_string($name) && mb_trim($name) !== '') {
+                    $names[] = $name;
+                }
+            }
+
+            if ($names !== []) {
+                $byLocale[$locale] = $names;
+            }
+        }
+
+        return $byLocale;
     }
 
     /**

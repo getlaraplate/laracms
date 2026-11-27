@@ -60,6 +60,7 @@ return [
         'entity' => 'Entità',
         'location' => 'Luogo',
         'media_images' => 'Immagini',
+        'no_type' => 'Nessun tipo',
         'order_column' => 'Posizione',
         'parent' => 'Padre',
         'postcode' => 'CAP',
@@ -113,5 +114,13 @@ return [
         'expiringSoonHint' => 'Contenuti pubblicati in scadenza',
         'scheduled' => 'Programmati',
         'scheduledHint' => 'Contenuti in attesa di pubblicazione',
+    ],
+    'tag_types' => [
+        'search' => 'Ricerca',
+        'people' => 'Persone',
+        'locations' => 'Luoghi',
+        'organizations' => 'Organizzazioni',
+        'topics' => 'Argomenti',
+        'events' => 'Eventi',
     ],
 ];
