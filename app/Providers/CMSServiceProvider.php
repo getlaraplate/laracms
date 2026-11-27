@@ -102,7 +102,7 @@ final class CMSServiceProvider extends ModuleServiceProvider
             'locations' => ['heroicon-o-map-pin', 'MapPin'],
             'organizations' => ['heroicon-o-building-office', 'Building2'],
             'topics' => ['heroicon-o-hashtag', 'Hash'],
-            'events' => ['heroicon-o-calendar-days', 'CalendarDays'],
+            'events' => ['heroicon-o-calendar', 'Calendar'],
         ] as $type => [$heroicon, $lucide]) {
             $tagTypes->register(new TagTypeDefinition($type, 'cms.tag_types.' . $type, $heroicon, $lucide));
         }

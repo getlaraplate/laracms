@@ -40,3 +40,20 @@ it('resolves icons and letters', function (): void {
         ->and($registry->letterFor('people'))->toBeNull()
         ->and($registry->letterFor(null))->toBeNull();
 });
+
+it('pins the icon pair of each CMS type', function (): void {
+    $pairs = [];
+
+    foreach (app(TagTypeRegistry::class)->all() as $definition) {
+        $pairs[$definition->type] = [$definition->heroicon, $definition->lucide];
+    }
+
+    expect($pairs)->toBe([
+        'search' => ['heroicon-o-magnifying-glass', 'Search'],
+        'people' => ['heroicon-o-users', 'Users'],
+        'locations' => ['heroicon-o-map-pin', 'MapPin'],
+        'organizations' => ['heroicon-o-building-office', 'Building2'],
+        'topics' => ['heroicon-o-hashtag', 'Hash'],
+        'events' => ['heroicon-o-calendar', 'Calendar'],
+    ]);
+});
