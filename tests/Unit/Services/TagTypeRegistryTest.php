@@ -57,3 +57,19 @@ it('pins the icon pair of each CMS type', function (): void {
         'events' => ['heroicon-o-calendar', 'Calendar'],
     ]);
 });
+
+it('pins the label key of each CMS type', function (): void {
+    $labelKeys = array_map(
+        static fn (TagTypeDefinition $definition): string => $definition->labelKey,
+        app(TagTypeRegistry::class)->all(),
+    );
+
+    expect($labelKeys)->toBe([
+        'cms.tag_types.search',
+        'cms.tag_types.people',
+        'cms.tag_types.locations',
+        'cms.tag_types.organizations',
+        'cms.tag_types.topics',
+        'cms.tag_types.events',
+    ]);
+});
