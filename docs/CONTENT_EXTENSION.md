@@ -60,12 +60,15 @@ C1–C18).
 
 Extended contents are **indexed** (for a future opt-in shop search) but kept out of the **generic**
 content search. `Content` implements `Modules\Core\Contracts\ProvidesDefaultSearchFilters`, returning
-`['extended_type' => null]`; `CrudService` applies it to the Scout query, and `= null` compiles to
-`IS NULL`, so the engine never returns extended contents for a generic search (no short pages at
-rehydration). On the database engine the hide global scope already excludes them; the filter is what
-keeps the separate-index engines (Elasticsearch/Typesense) hole-free, where `extended_type` is a real
-indexed field. An opt-in surface (e.g. a shop search) queries extended contents via the per-alias
-`extended_type` value instead.
+`['extended_type' => null]`; every generic search path (Basic and each orchestrated strategy) applies
+it to the Scout query after the request constraints, and `= null` compiles to `IS NULL`, so the engine
+never returns extended contents for a generic search (no short pages at rehydration). On the database
+engine the hide global scope already excludes them; on Elasticsearch the filter is what keeps the index
+hole-free, where `extended_type` is a real indexed field. Typesense cannot filter on `null`, so it skips
+the filter and extended contents are not excluded there (see Core `SEARCH_RETRIEVAL_PIPELINE.md`,
+"Eligibility on every path"). A request filter on `extended_type` cannot bring extended contents back:
+an opt-in surface (e.g. a shop search) reaches them through its own model, not through the generic
+Content search.
 
 End-to-end ES/Typesense verification is left to the first consumer's integration (the database engine's
 own `search('*')` over `Content` has a pre-existing, unrelated column-set limitation in tests).

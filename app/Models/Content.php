@@ -239,8 +239,10 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, ILo
     /**
      * Generic content search excludes extended contents by filtering `extended_type IS NULL` at the
      * engine (`= null` becomes `IS NULL` in the query builder), so they never come back from the
-     * engine only to be dropped at rehydration by the hide scope. An opt-in surface (e.g. a shop
-     * search) can query them via the per-alias `extended_type` value.
+     * engine only to be dropped at rehydration by the hide scope. The filter is applied after the
+     * request constraints, so a request filter on `extended_type` cannot bring extended contents back:
+     * an opt-in surface (e.g. a shop search) reaches them through its own model, not through the
+     * generic Content search.
      *
      * @return array<string, scalar|null>
      */
