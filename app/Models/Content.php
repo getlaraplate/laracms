@@ -51,6 +51,7 @@ use Modules\Core\Models\Concerns\HasTranslatedDynamicContents;
 use Modules\Core\Models\Concerns\HasValidity;
 use Modules\Core\Models\Concerns\SortableTrait;
 use Modules\Core\Models\RecordOrigin;
+use Modules\Core\Overrides\LocaleScope;
 use Modules\Core\Overrides\Model;
 use Modules\Core\Search\Contracts\IProvidesRerankerText;
 use Modules\Core\Search\DTOs\VectorProfile;
@@ -191,7 +192,7 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, ILo
         $texts = [];
 
         $contents = self::query()
-            ->withoutGlobalScope(\Modules\Core\Overrides\LocaleScope::class)
+            ->withoutGlobalScope(LocaleScope::class)
             ->whereKey($keys)
             ->with('translations')
             ->get();
@@ -471,6 +472,7 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, ILo
         $document['title'] = $title;
         $document['slug'] = $slug;
         $document['locales'] = $locales;
+        $document['tag_names'] = $this->tagNamesByLocale(array_values($available));
 
         foreach ($components as $field => $byLocale) {
             $document[$field] = $byLocale;
@@ -502,7 +504,7 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, ILo
         // Mirror the Searchable trait default (drop LocaleScope) and additionally include extended
         // contents, which the HidesExtendedContent scope removes from the import query.
         return $query
-            ->withoutGlobalScope(\Modules\Core\Overrides\LocaleScope::class)
+            ->withoutGlobalScope(LocaleScope::class)
             ->withoutGlobalScope(HidesExtendedContent::class);
     }
 
@@ -587,6 +589,7 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, ILo
 
         $schema->addField(new FieldDefinition('title', FieldType::Object, [IndexType::Searchable, IndexType::Fuzzy], ['locale_properties' => $localeText]));
         $schema->addField(new FieldDefinition('slug', FieldType::Object, [IndexType::Searchable], ['locale_properties' => $localeKeyword]));
+        $schema->addField(new FieldDefinition('tag_names', FieldType::Object, [IndexType::Searchable, IndexType::FullText], ['locale_properties' => $localeText]));
         $schema->addField(new FieldDefinition('locales', FieldType::Keyword, [IndexType::Searchable, IndexType::Filterable, IndexType::Facetable]));
         $profile = VectorProfileContext::get();
         $schema->addField(new FieldDefinition('embeddings', FieldType::Array, [IndexType::Searchable, IndexType::Vector], $profile instanceof VectorProfile
@@ -829,6 +832,40 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, ILo
                 return ReadingStatistics::fromBlocks($blocks);
             },
         );
+    }
+
+    /**
+     * Names of the tags per language, from explicit translations only: a tag
+     * without a translation in a language adds nothing there, so a search in a
+     * language never matches a name written in another one. The `tags` relation
+     * is narrowed by LocaleScope to the tags translated in the active language,
+     * so this reads them without it, with their translations, in one query.
+     *
+     * @param  list<string>  $locales
+     * @return array<string, list<string>>
+     */
+    private function tagNamesByLocale(array $locales): array
+    {
+        $tags = $this->tags()->withoutGlobalScope(LocaleScope::class)->with('translations')->get();
+        $byLocale = [];
+
+        foreach ($locales as $locale) {
+            $names = [];
+
+            foreach ($tags as $tag) {
+                $name = $tag->translations->firstWhere('locale', $locale)?->name;
+
+                if (is_string($name) && mb_trim($name) !== '') {
+                    $names[] = $name;
+                }
+            }
+
+            if ($names !== []) {
+                $byLocale[$locale] = $names;
+            }
+        }
+
+        return $byLocale;
     }
 
     /**
