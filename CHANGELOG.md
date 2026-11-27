@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.50.3] - 2026-11-27
+
+### 🐛 Bug Fixes
+
+- *(cms)* Fill the location form from its place and save the geolocation it shows
+
 ## [1.50.2] - 2026-11-26
 
 ### 🐛 Bug Fixes
