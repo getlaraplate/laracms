@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.51.0] - 2026-11-27
+
+### 🚀 Features
+
+- *(search)* Index tag names per locale
+- *(tags)* Add an extensible registry of tag types with icons
+- *(filament)* Show tag type icons and offer the standard types
+
+### 🐛 Bug Fixes
+
+- *(search)* Preload tags across locales for tag_names
+- *(tags)* Use the calendar icon for events and pin the registered icons
+- *(filament)* Show the generic tag icon for a tag with no type
+- *(search)* Re-index the contents of a tag when its names change
+- *(tags)* Remove the PHPStan errors the tag changes added
+
+### 📚 Documentation
+
+- *(content)* State that a request filter cannot bring extended contents back
+
+### 🧪 Testing
+
+- *(tags)* Pin the label keys of the registered tag types
+
 ## [1.50.3] - 2026-11-27
 
 ### 🐛 Bug Fixes
