@@ -62,7 +62,7 @@ final class CMSDatabaseSeeder extends Seeder
     private Collection $fields;
 
     /**
-     * @return array<int, array{name: string, value: mixed, encrypted: bool, choices: ?array<int, mixed>, type: SettingTypeEnum, group_name: string, description: string}>
+     * @return list<array{name: string, value: mixed, encrypted: bool, choices: ?array<int, mixed>, type: SettingTypeEnum, group_name: string, description: string}>
      */
     public static function runtimeSettingDefinitions(): array
     {
@@ -620,7 +620,7 @@ final class CMSDatabaseSeeder extends Seeder
     private function getDefaultFieldValue(Field $field, bool $is_required): mixed
     {
         return match ($field->type) {
-            FieldType::Select && isset($field->options->multiple) && $field->options->multiple => [],
+            FieldType::Select => isset($field->options->multiple) && $field->options->multiple ? [] : null,
             FieldType::Switch => $is_required,
             FieldType::Checkbox => [],
             default => null,

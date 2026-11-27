@@ -16,7 +16,7 @@ use Modules\CMS\Models\Pivot\Contributable;
 use Modules\Core\Contracts\IDynamicEntityTypable;
 use Modules\Core\Contracts\IHidesAttributesFromAnonymous;
 use Modules\Core\Contracts\IPreloadsAppendedRelations;
-use Modules\Core\Models\Concerns\HasPath;
+use Modules\Core\Contracts\ITranslatableModel;
 use Modules\Core\Models\Concerns\HasTranslatedDynamicContents;
 use Modules\Core\Models\Concerns\HidesAttributesFromAnonymous;
 use Modules\Core\Models\User;
@@ -27,12 +27,24 @@ use Spatie\MediaLibrary\HasMedia as IMediable;
 /**
  * @phpstan-use HasMultimedia<Contributor>
  * @phpstan-use HasTranslatedDynamicContents<Contributor>
+ *
+ * @property int $id
+ * @property int|null $user_id The user that the contributor belongs to
+ * @property int $entity_id
+ * @property int $presettable_id
+ * @property string $name The name of the contributor
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
+ * @property \Carbon\CarbonImmutable|null $deleted_at
+ * @property bool|null $is_deleted Whether the entity is deleted
+ * @property array<array-key, mixed>|null $shared_components The shared dynamic components of the contributor
+ * @property string|null $slug
+ * @property array<array-key, mixed>|null $components
  */
-final class Contributor extends Model implements IHidesAttributesFromAnonymous, IMediable, IPreloadsAppendedRelations, Taggable
+final class Contributor extends Model implements IHidesAttributesFromAnonymous, IMediable, IPreloadsAppendedRelations, ITranslatableModel, Taggable
 {
     // region Traits
     use HasMultimedia;
-    use HasPath;
     use HasTags;
     use HasTranslatedDynamicContents {
         HasTranslatedDynamicContents::getRules as private getRulesTranslatedDynamicContents;
@@ -59,7 +71,7 @@ final class Contributor extends Model implements IHidesAttributesFromAnonymous, 
     ];
 
     /**
-     * Bridged user always comes from User on serialize / search / path, so it is
+     * Bridged user always comes from User on serialize / search, so it is
      * declared here rather than through a global scope: a closure scope is keyed by
      * spl_object_hash and cannot be lifted per query, which silently defeats
      * `->without('user')`. An always-loaded relation owned by a trait is declared the
@@ -145,19 +157,6 @@ final class Contributor extends Model implements IHidesAttributesFromAnonymous, 
         ]);
 
         return $rules;
-    }
-
-    public function getPathPrefix(): string
-    {
-        $entity = $this->entity;
-
-        return $entity !== null ? $entity->slug : '';
-    }
-
-    #[Override]
-    public function getPath(): null
-    {
-        return null;
     }
 
     protected static function getEntityType(): IDynamicEntityTypable

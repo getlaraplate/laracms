@@ -86,6 +86,7 @@ return [
         'geocodeFilled' => 'Geografische Felder ermittelt.',
         'geocodeNeedQuery' => 'Gib zuerst eine Adresse oder einen Namen ein (mind. 3 Zeichen].',
         'geocodeNoResult' => 'Kein Treffer für diese Suche.',
+        'geolocationInvalid' => 'Breiten- und Längengrad als "Breitengrad, Längengrad" eingeben (z. B. 45.4642, 9.19).',
         'rejectFailed' => 'Ablehnung fehlgeschlagen.',
         'rejectReasonRequired' => 'Gib einen Grund für die Ablehnung an.',
         'rejected' => 'Revision abgelehnt.',

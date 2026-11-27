@@ -7,7 +7,6 @@ namespace Modules\CMS\Models;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Str;
 use MatanYadaev\EloquentSpatial\Objects\Point;
 use MatanYadaev\EloquentSpatial\Traits\HasSpatial;
 use Modules\CMS\Contracts\Taggable;
@@ -17,7 +16,6 @@ use Modules\CMS\Helpers\HasTags;
 use Modules\CMS\Models\Pivot\Locatable;
 use Modules\CMS\Observers\LocationObserver;
 use Modules\Core\Contracts\ISearchableModel;
-use Modules\Core\Models\Concerns\HasPath;
 use Modules\Core\Models\Concerns\HasPlace;
 use Modules\Core\Models\Concerns\HasSlug;
 use Modules\Core\Models\Place;
@@ -28,10 +26,22 @@ use Modules\Core\Search\Schema\IndexType;
 use Modules\Core\Search\Traits\Searchable;
 use Override;
 
+/**
+ * @property int $id
+ * @property int|null $place_id
+ * @property string $name The friendly name of the location
+ * @property string|null $slug The slug of the location
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
+ * @property \Carbon\CarbonImmutable|null $deleted_at
+ * @property bool|null $is_deleted Whether the entity is deleted
+ * @property string|null $locked_at The date and time when the entity was locked
+ * @property int|null $locked_user_id The user who locked the entity
+ * @property string|null $locked_until The moment the lock expires; null means it never does
+ */
 #[ObservedBy(LocationObserver::class)]
 final class Location extends Model implements ISearchableModel, Taggable
 {
-    use HasPath;
     use HasPlace;
     use HasSlug;
     use HasSpatial;
@@ -131,27 +141,6 @@ final class Location extends Model implements ISearchableModel, Taggable
         ]);
 
         return $rules;
-    }
-
-    // public function getPathPrefix(): string
-    // {
-    //     return '';
-    // }
-
-    #[Override]
-    public function getPath(): string
-    {
-        if (! empty($this->attributes['place_id'] ?? null)) {
-            $place = $this->resolvePlace();
-
-            if ($place instanceof Place) {
-                return $place->countryPathSegment();
-            }
-        }
-
-        $country = $this->getAttribute('country');
-
-        return Str::slug(is_string($country) ? $country : '');
     }
 
     /**

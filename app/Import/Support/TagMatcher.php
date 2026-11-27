@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\CMS\Import\Support;
 
+use Illuminate\Database\Query\Builder;
 use Modules\CMS\Models\Translations\TagTranslation;
 
 /**
@@ -26,7 +27,7 @@ final class TagMatcher
             ->where('locale', $locale)
             ->where('slug', $slug)
             ->whereNull('deleted_at')
-            ->when($locking, static fn ($query) => $query->sharedLock())
+            ->when($locking, static fn (Builder $query): Builder => $query->sharedLock())
             ->value('tag_id');
 
         return is_numeric($tag_id) ? (int) $tag_id : null;

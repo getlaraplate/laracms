@@ -34,10 +34,6 @@ final class CategoriesTable
                         ->sortable()
                         ->state(static fn (Category $record): string => Str::repeat('&nbsp;', $record->ancestors->count() * 4) . $record->name)
                         ->html(),
-                    TextColumn::make('path')
-                        ->searchable()
-                        ->sortable()
-                        ->toggleable(isToggledHiddenByDefault: true),
                     TextColumn::make('parent_id')
                         ->numeric()
                         ->sortable()

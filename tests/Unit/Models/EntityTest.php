@@ -19,7 +19,6 @@ it('entity model uses correct traits', function (): void {
     expect($traits)->toContain(Illuminate\Database\Eloquent\Factories\HasFactory::class);
     expect($traits)->toContain(Modules\Core\Models\Concerns\HasActivation::class);
     expect($traits)->toContain(Modules\Core\Cache\HasCache::class);
-    expect($traits)->toContain(Modules\Core\Models\Concerns\HasPath::class);
     expect($traits)->toContain(Modules\Core\Models\Concerns\HasSlug::class);
     expect($traits)->toContain(Modules\Core\Models\Concerns\HasValidations::class);
     expect($traits)->toContain(Modules\Core\Locking\Traits\HasLocks::class);
@@ -31,7 +30,6 @@ it('entity model has required methods', function (): void {
     expect($reflection->hasMethod('presets'))->toBeTrue();
     expect($reflection->hasMethod('contents'))->toBeTrue();
     expect($reflection->hasMethod('getRules'))->toBeTrue();
-    expect($reflection->hasMethod('getPath'))->toBeTrue();
     expect($reflection->hasMethod('toArray'))->toBeTrue();
 });
 
@@ -53,20 +51,6 @@ it('entity model has correct method signatures', function (): void {
     // Test getRules method
     $method = $reflection->getMethod('getRules');
     expect($method->getReturnType()->getName())->toBe('array');
-
-    // Test getPath method
-    $method = $reflection->getMethod('getPath');
-    $returnType = $method->getReturnType();
-    expect($returnType)->not->toBeNull();
-
-    if ($returnType instanceof ReflectionNamedType) {
-        expect($returnType->getName())->toBe('string');
-        expect($returnType->allowsNull())->toBeTrue();
-    } elseif ($returnType instanceof ReflectionUnionType) {
-        $types = $returnType->getTypes();
-        $typeNames = array_map(fn (\ReflectionIntersectionType|ReflectionNamedType $t) => $t->getName(), $types);
-        expect($typeNames)->toContain('string');
-    }
 
     // Test toArray method
     $method = $reflection->getMethod('toArray');

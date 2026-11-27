@@ -19,7 +19,6 @@ it('tag model uses correct traits', function (): void {
     $traits = array_values(class_uses_recursive(Tag::class));
 
     expect($traits)->toContain(Illuminate\Database\Eloquent\Factories\HasFactory::class);
-    expect($traits)->toContain(Modules\Core\Models\Concerns\HasPath::class);
     expect($traits)->toContain(Modules\Core\Models\Concerns\HasTranslations::class);
     expect($traits)->toContain(Modules\Core\Models\Concerns\HasValidations::class);
     expect($traits)->toContain(Modules\Core\SoftDeletes\SoftDeletes::class);
@@ -30,7 +29,6 @@ it('tag model has required methods', function (): void {
     $reflection = new ReflectionClass(Tag::class);
 
     expect($reflection->hasMethod('getRules'))->toBeTrue();
-    expect($reflection->hasMethod('getPath'))->toBeTrue();
     expect($reflection->hasMethod('toArray'))->toBeTrue();
 });
 
@@ -40,10 +38,6 @@ it('tag model has correct method signatures', function (): void {
     // Test getRules method
     $method = $reflection->getMethod('getRules');
     expect($method->getReturnType()->getName())->toBe('array');
-
-    // Test getPath method
-    $method = $reflection->getMethod('getPath');
-    expect($method->getReturnType()->getName())->toBe('null');
 
     // Test toArray method
     $method = $reflection->getMethod('toArray');

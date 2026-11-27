@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Modules\CMS\Casts;
 
 use JsonSerializable;
+use Modules\Core\Support\EditorPlainText;
 
 /**
  * Reading metrics for Editor.js block JSON, aligned with the newsroom Editor + StringUtils.js logic.
+ *
+ * Which parts of a block are text, and the plain text itself, come from Core {@see EditorPlainText}: the Editor field
+ * type is Core's, and the search index reads the same text (spec 2026-11-17-extended-entity-search-design.md, XS15).
  */
 final readonly class ReadingStatistics implements JsonSerializable
 {
@@ -54,7 +58,7 @@ final readonly class ReadingStatistics implements JsonSerializable
      */
     public static function fromBlocks(iterable $blocks): self
     {
-        $blocks_list = self::normalizeBlocksList($blocks);
+        $blocks_list = EditorPlainText::blocks($blocks);
 
         if ($blocks_list === []) {
             return new self(0, 0, 0, 0, 0.0);
@@ -66,7 +70,7 @@ final readonly class ReadingStatistics implements JsonSerializable
         $cleaned_chunks = [];
 
         foreach ($blocks_list as $block) {
-            $segments = self::collectMetricSegments($block);
+            $segments = EditorPlainText::segments($block);
 
             if ($segments === []) {
                 continue;
@@ -75,7 +79,7 @@ final readonly class ReadingStatistics implements JsonSerializable
             $text_blocks++;
 
             foreach ($segments as $segment) {
-                $stripped = self::stripFindMarksFromHtmlString($segment);
+                $stripped = EditorPlainText::stripFindMarks($segment);
                 $total_characters += mb_strlen($stripped);
                 $total_words += self::countWords($stripped);
                 $clean = self::cleanText($stripped);
@@ -110,52 +114,12 @@ final readonly class ReadingStatistics implements JsonSerializable
      */
     public static function plainText(iterable $blocks): string
     {
-        $chunks = [];
-
-        foreach (self::normalizeBlocksList($blocks) as $block) {
-            foreach (self::collectMetricSegments($block) as $segment) {
-                $plain = preg_replace('/<[^>]*>/u', ' ', self::stripFindMarksFromHtmlString($segment)) ?? '';
-                $plain = html_entity_decode($plain, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                $plain = mb_trim(preg_replace('/\s+/u', ' ', $plain) ?? '');
-
-                if ($plain !== '') {
-                    $chunks[] = $plain;
-                }
-            }
-        }
-
-        return implode(' ', $chunks);
+        return EditorPlainText::fromBlocks($blocks);
     }
 
     public static function stripFindMarksFromHtmlString(string $html): string
     {
-        if ($html === '') {
-            return '';
-        }
-
-        $previous = '';
-        $current = $html;
-        $guard = 0;
-
-        while ($previous !== $current && $guard < 50) {
-            $previous = $current;
-            $guard++;
-            $current = (string) preg_replace_callback(
-                '/<span\b[^>]*\bdata-editor-find-mark="1"[^>]*>(.*?)<\/span>/is',
-                static function (array $matches): string {
-                    $inner = $matches[1];
-
-                    if (preg_match('/<del\b[^>]*\beditor-find-strike\b[^>]*>(.*?)<\/del>/is', $inner, $del_match)) {
-                        return $del_match[1];
-                    }
-
-                    return $inner;
-                },
-                $current,
-            );
-        }
-
-        return $current;
+        return EditorPlainText::stripFindMarks($html);
     }
 
     public static function cleanText(string $text): string
@@ -223,142 +187,6 @@ final readonly class ReadingStatistics implements JsonSerializable
             'paragraphs' => $this->paragraphs,
             'reading_time' => $this->reading_time,
         ];
-    }
-
-    /**
-     * @param  iterable<int, mixed>  $blocks
-     * @return list<array{type: string, data: array<string, mixed>}>
-     */
-    private static function normalizeBlocksList(iterable $blocks): array
-    {
-        $out = [];
-
-        foreach ($blocks as $block) {
-            $out[] = [
-                'type' => self::blockType($block),
-                'data' => self::blockData($block),
-            ];
-        }
-
-        return $out;
-    }
-
-    private static function blockType(mixed $block): string
-    {
-        if (is_array($block)) {
-            $type = $block['type'] ?? 'paragraph';
-        } elseif (is_object($block)) {
-            $type = $block->type ?? 'paragraph';
-        } else {
-            return 'paragraph';
-        }
-
-        return is_string($type) && $type !== '' ? $type : 'paragraph';
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private static function blockData(mixed $block): array
-    {
-        if (is_array($block)) {
-            $data = $block['data'] ?? [];
-        } elseif (is_object($block)) {
-            $data = $block->data ?? [];
-        } else {
-            return [];
-        }
-
-        if (is_array($data)) {
-            $normalized = [];
-
-            foreach ($data as $key => $value) {
-                if (is_string($key)) {
-                    $normalized[$key] = $value;
-                }
-            }
-
-            return $normalized;
-        }
-
-        if (is_object($data)) {
-            $json = json_encode($data);
-
-            if (! is_string($json)) {
-                return [];
-            }
-
-            $decoded = json_decode($json, true);
-
-            if (! is_array($decoded)) {
-                return [];
-            }
-
-            $normalized = [];
-
-            foreach ($decoded as $key => $value) {
-                if (is_string($key)) {
-                    $normalized[$key] = $value;
-                }
-            }
-
-            return $normalized;
-        }
-
-        return [];
-    }
-
-    /**
-     * HTML segments used for character and word counters (matches editorjsHighLights metric_segments).
-     *
-     * @param  array{type: string, data: array<string, mixed>}  $block
-     * @return list<string>
-     */
-    private static function collectMetricSegments(array $block): array
-    {
-        $data = $block['data'];
-        $type = $block['type'];
-        $segments = [];
-
-        if (isset($data['text']) && is_string($data['text']) && $data['text'] !== '') {
-            $segments[] = $data['text'];
-        }
-
-        if (isset($data['caption']) && is_string($data['caption']) && $data['caption'] !== '') {
-            $segments[] = $data['caption'];
-        }
-
-        if (isset($data['items']) && is_array($data['items'])) {
-            foreach ($data['items'] as $item) {
-                if (is_string($item) && $item !== '') {
-                    $segments[] = $item;
-                }
-
-                if (is_array($item) && isset($item['text']) && is_string($item['text']) && $item['text'] !== '') {
-                    $segments[] = $item['text'];
-                }
-            }
-        }
-
-        if ($type === 'table' && isset($data['content']) && is_array($data['content'])) {
-            foreach ($data['content'] as $row) {
-                if (! is_array($row)) {
-                    continue;
-                }
-
-                foreach ($row as $cell) {
-                    if (is_string($cell) && $cell !== '') {
-                        $segments[] = $cell;
-                    }
-                }
-            }
-        }
-
-        if ($type === 'raw' && isset($data['html']) && is_string($data['html']) && $data['html'] !== '') {
-            $segments[] = $data['html'];
-        }
-
-        return $segments;
     }
 
     /**

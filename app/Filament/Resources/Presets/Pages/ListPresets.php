@@ -71,7 +71,7 @@ final class ListPresets extends ListRecords
             $tabs[(string) $entity_id] = Tab::make($entity_name)
                 ->badge($count)
                 ->modifyQueryUsing(
-                    fn (Builder $query): Builder => $query->whereRaw($entity_column . ' = ?', [$entity_id]),
+                    fn (Builder $query): Builder => $query->where($entity_column, $entity_id),
                 );
         }
 

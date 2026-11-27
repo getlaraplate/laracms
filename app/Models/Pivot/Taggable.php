@@ -18,6 +18,12 @@ use Override;
  * The assignment of a tag to any taggable model (content, …). Modelled
  * explicitly so the moment a tag was attached (or last touched) is recorded and
  * observable, rather than living in an anonymous polymorphic pivot row.
+ *
+ * @property int $tag_id
+ * @property string $taggable_type
+ * @property int $taggable_id
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
  */
 final class Taggable extends MorphPivot
 {

@@ -20,8 +20,8 @@ use Modules\CMS\Database\Factories\TagFactory;
 use Modules\CMS\Enums\CMSTables;
 use Modules\CMS\Models\Pivot\Taggable;
 use Modules\CMS\Models\Translations\TagTranslation;
+use Modules\Core\Contracts\ITranslatableModel;
 use Modules\Core\Helpers\LocaleContext;
-use Modules\Core\Models\Concerns\HasPath;
 use Modules\Core\Models\Concerns\HasTranslations;
 use Modules\Core\Models\Concerns\SortableTrait;
 use Modules\Core\Overrides\LocaleScope;
@@ -29,9 +29,19 @@ use Modules\Core\Overrides\Model;
 use Override;
 use Spatie\EloquentSortable\Sortable;
 
-final class Tag extends Model implements Sortable
+/**
+ * @property int $id
+ * @property string|null $type The type of the tag
+ * @property int $order_column The order of the tag
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
+ * @property \Carbon\CarbonImmutable|null $deleted_at
+ * @property bool|null $is_deleted Whether the entity is deleted
+ * @property string|null $name
+ * @property string|null $slug
+ */
+final class Tag extends Model implements ITranslatableModel, Sortable
 {
-    use HasPath;
     use HasTranslations;
     use SortableTrait;
 
@@ -286,12 +296,6 @@ final class Tag extends Model implements Sortable
         ]);
 
         return $rules;
-    }
-
-    #[Override]
-    public function getPath(): null
-    {
-        return null;
     }
 
     /**

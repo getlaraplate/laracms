@@ -57,7 +57,6 @@ Canonical English names for CMS entities in this module. Use these terms in code
 | **HasValidity** | Publication window (`valid_from` / `valid_to`). |
 | **Searchable** | Queues indexing via Core `ModelRequiresIndexing`. |
 | **Content relation-field filter** | Public search filter such as `tags.id` or `locations.country`; Core applies it through the active search driver before pagination. |
-| **HasPath** | SEO-friendly URL path generation for contents. |
 
 ## Filament integration
 

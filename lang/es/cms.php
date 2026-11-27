@@ -86,6 +86,7 @@ return [
         'geocodeFilled' => 'Campos geográficos resueltos.',
         'geocodeNeedQuery' => 'Introduce primero una dirección o un nombre (mín. 3 caracteres].',
         'geocodeNoResult' => 'No se encontró ninguna coincidencia para esta búsqueda.',
+        'geolocationInvalid' => 'Introduce la latitud y la longitud como "latitud, longitud" (p. ej. 45.4642, 9.19).',
         'rejectFailed' => 'El rechazo ha fallado.',
         'rejectReasonRequired' => 'Indica un motivo para rechazar.',
         'rejected' => 'Revisión rechazada.',

@@ -23,8 +23,8 @@ final class CmsGraphProvider implements GraphProviderInterface
     public function summaryFields(string $module, string $entity): array
     {
         return match ($entity) {
-            'contents' => ['title', 'slug', 'path', 'status', 'type', 'created_at', 'updated_at'],
-            'tags', 'categories', 'contributors', 'locations' => ['name', 'slug', 'path', 'type'],
+            'contents' => ['title', 'slug', 'status', 'type', 'created_at', 'updated_at'],
+            'tags', 'categories', 'contributors', 'locations' => ['name', 'slug', 'type'],
             default => [],
         };
     }

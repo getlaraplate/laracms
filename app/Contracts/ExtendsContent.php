@@ -7,15 +7,18 @@ namespace Modules\CMS\Contracts;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Modules\CMS\Models\Content;
+use Modules\Core\Contracts\IExtendsModel;
 
 /**
  * Implemented by a domain model that extends a {@see Content} through the content-extension seam.
  *
  * The extender lives in its own table with a `content_id` foreign key; CMS knows it only by its
- * stable alias, resolved through the {@see \Modules\CMS\Services\ContentExtenderRegistry}. CMS never
- * references the concrete extender class.
+ * stable alias, resolved through the Core {@see \Modules\Core\Search\Extensions\ExtensionRegistry} under
+ * {@see Content}. CMS never references the concrete extender class. It is the Core extender contract
+ * ({@see IExtendsModel}) for the host {@see Content}; {@see \Modules\CMS\Models\Concerns\ExtendsContentTrait}
+ * implements the Core part.
  */
-interface ExtendsContent
+interface ExtendsContent extends IExtendsModel
 {
     /**
      * The stable morph alias for this extender (convention `module.model`, e.g. `shop.product`).
@@ -34,7 +37,7 @@ interface ExtendsContent
     /**
      * The back-relation to the extended content, with the hide scope removed so it resolves.
      *
-     * @return BelongsTo<Content, Model>
+     * @return BelongsTo<Content, covariant Model>
      */
     public function content(): BelongsTo;
 

@@ -16,7 +16,6 @@ it('location model uses correct traits', function (): void {
     $traits = array_values(class_uses_recursive(Location::class));
 
     expect($traits)->toContain(Illuminate\Database\Eloquent\Factories\HasFactory::class);
-    expect($traits)->toContain(Modules\Core\Models\Concerns\HasPath::class);
     expect($traits)->toContain(Modules\Core\Models\Concerns\HasSlug::class);
     expect($traits)->toContain(MatanYadaev\EloquentSpatial\Traits\HasSpatial::class);
     expect($traits)->toContain(Modules\CMS\Helpers\HasTags::class);
@@ -30,7 +29,6 @@ it('location model has required methods', function (): void {
 
     expect($reflection->hasMethod('contents'))->toBeTrue();
     expect($reflection->hasMethod('getRules'))->toBeTrue();
-    expect($reflection->hasMethod('getPath'))->toBeTrue();
     expect($reflection->hasMethod('toArray'))->toBeTrue();
 });
 
@@ -48,10 +46,6 @@ it('location model has correct method signatures', function (): void {
     // Test getRules method
     $method = $reflection->getMethod('getRules');
     expect($method->getReturnType()->getName())->toBe('array');
-
-    // Test getPath method
-    $method = $reflection->getMethod('getPath');
-    expect($method->getReturnType()->getName())->toBe('string');
 
     // Test toArray method
     $method = $reflection->getMethod('toArray');

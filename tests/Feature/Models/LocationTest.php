@@ -58,10 +58,6 @@ it('has tags trait', function (): void {
     expect(method_exists($this->location, 'detachTags'))->toBeTrue();
 });
 
-it('has path trait', function (): void {
-    expect(method_exists($this->location, 'getPath'))->toBeTrue();
-});
-
 it('has searchable trait', function (): void {
     expect(method_exists($this->location, 'toSearchableArray'))->toBeTrue();
 });
@@ -158,12 +154,6 @@ it('can be permanently deleted', function (): void {
 
 it('has spatial methods available', function (): void {
     expect($this->location->geolocation)->toBeInstanceOf(Point::class);
-});
-
-it('generates path from country', function (): void {
-    $location = Location::factory()->create(['country' => 'Italy']);
-
-    expect($location->getPath())->toBe('italy');
 });
 
 it('eager-loads place by default', function (): void {

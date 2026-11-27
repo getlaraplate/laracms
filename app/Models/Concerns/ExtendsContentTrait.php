@@ -7,8 +7,8 @@ namespace Modules\CMS\Models\Concerns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Modules\CMS\Models\Content;
-use Modules\CMS\Scopes\HidesExtendedContent;
 use Modules\CMS\Services\ContentExtensionCascade;
+use Modules\Core\Search\Extensions\HidesExtendedRows;
 use Override;
 
 /**
@@ -77,7 +77,7 @@ trait ExtendsContentTrait
 
                 $content = Content::withExtended()->withTrashed()->find($contentId);
 
-                if ($content === null) {
+                if (! $content instanceof Content) {
                     return;
                 }
 
@@ -116,7 +116,55 @@ trait ExtendsContentTrait
     public function content(): BelongsTo
     {
         return $this->belongsTo(Content::class, 'content_id')
-            ->withoutGlobalScope(HidesExtendedContent::class);
+            ->withoutGlobalScope(HidesExtendedRows::class);
+    }
+
+    /**
+     * The host of the Core extension contracts this model extends.
+     *
+     * @return class-string<Content>
+     */
+    public function extendedModel(): string
+    {
+        return Content::class;
+    }
+
+    /**
+     * The alias stored in `contents.extended_type`: the content alias of the extender.
+     */
+    public function extensionAlias(): string
+    {
+        return $this->contentAlias();
+    }
+
+    public function extensionHostKey(): string
+    {
+        return 'content_id';
+    }
+
+    public function extensionHostRelation(): string
+    {
+        return 'content';
+    }
+
+    /**
+     * The entity whose presets shape the extender's contents, so a dynamic field named like one of its own columns
+     * is refused there (XS17). Null by default: an extender with its own content entity returns its type.
+     */
+    public function extensionEntityType(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * The columns of the extender's own table. An extender that keeps an explicit list of its columns (the keys
+     * its merge routes to itself) returns that list instead.
+     *
+     * @return list<string>
+     */
+    public function extensionOwnColumns(): array
+    {
+        return array_values($this->getConnection()->getSchemaBuilder()->getColumnListing($this->getTable()));
     }
 
     /**
@@ -140,14 +188,14 @@ trait ExtendsContentTrait
             return parent::save($options);
         }
 
-        return $this->getConnection()->transaction(function () use ($options): bool {
-            $content = $this->tempContent;
+        $content = $this->tempContent;
 
+        return $this->getConnection()->transaction(function () use ($options, $content): bool {
             // extended_type is guarded; set it directly so it is written only through this path (C17).
             $content->extended_type = $this->contentAlias();
             $content->save();
 
-            $this->content_id = $content->getKey();
+            $this->content_id = $content->id;
             $this->tempContent = null;
 
             $saved = parent::save($options);

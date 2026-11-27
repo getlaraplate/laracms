@@ -15,7 +15,7 @@ beforeEach(function (): void {
     setupCMSEntities([EntityType::Contents]);
 });
 
-it('exposes presets relation and null path from core entity', function (): void {
+it('exposes presets relation from core entity', function (): void {
     $entity = Entity::query()->create([
         'type' => EntityType::Contents,
         'name' => 'entity-behavior-' . uniqid(),
@@ -24,7 +24,6 @@ it('exposes presets relation and null path from core entity', function (): void 
 
     expect($entity->presets())->toBeInstanceOf(HasMany::class);
     expect($entity->presets()->getRelated())->toBeInstanceOf(Preset::class);
-    expect($entity->getPath())->toBeNull();
 });
 
 it('creates entities through the module factory binding', function (): void {

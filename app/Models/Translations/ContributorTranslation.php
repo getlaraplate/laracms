@@ -15,6 +15,17 @@ use Modules\Core\Overrides\Model;
 use Modules\Core\Services\Translation\Definitions\ITranslated;
 use Override;
 
+/**
+ * @property int $id
+ * @property int $contributor_id
+ * @property string $locale The locale of the translation
+ * @property string|null $slug
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
+ * @property \Carbon\CarbonImmutable|null $deleted_at
+ * @property bool|null $is_deleted Whether the entity is deleted
+ * @property array<array-key, mixed> $components The translated contributor components
+ */
 final class ContributorTranslation extends Model implements IsPartOfParent, ITranslated
 {
     use HasSlug;
