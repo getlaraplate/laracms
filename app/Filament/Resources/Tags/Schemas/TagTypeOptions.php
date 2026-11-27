@@ -23,7 +23,13 @@ final class TagTypeOptions
             resolve(TagTypeRegistry::class)->all(),
         );
 
-        $others = Tag::getTypes()->filter()->diff($registered)->unique()->sort()->values()->all();
+        $others = Tag::getTypes()
+            ->filter()
+            ->reject(static fn (string $type): bool => in_array($type, $registered, true))
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
         $types = [...$registered, ...$others];
 
         return array_combine($types, $types);

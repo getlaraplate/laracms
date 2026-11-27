@@ -40,7 +40,7 @@ final class TagTranslationObserver
      */
     private function queueReindex(TagTranslation $translation): void
     {
-        if (! Taggable::query()->where('tag_id', $translation->tag_id)->exists()) {
+        if (! Taggable::query()->where(new Taggable()->qualifyColumn('tag_id'), $translation->tag_id)->exists()) {
             return;
         }
 

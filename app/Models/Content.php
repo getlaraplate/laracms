@@ -29,6 +29,7 @@ use Modules\CMS\Models\Pivot\Locatable;
 use Modules\CMS\Models\Pivot\Relatable;
 use Modules\CMS\Models\Pivot\Taggable as TaggablePivot;
 use Modules\CMS\Models\Translations\ContentTranslation;
+use Modules\CMS\Models\Translations\TagTranslation;
 use Modules\CMS\Observers\ContentObserver;
 use Modules\CMS\Scopes\HidesExtendedContent;
 use Modules\CMS\Services\ContentExtenderRegistry;
@@ -875,7 +876,8 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, ILo
             $names = [];
 
             foreach ($tags as $tag) {
-                $name = $tag->translations->firstWhere('locale', $locale)?->name;
+                $translation = $tag->translations->firstWhere('locale', $locale);
+                $name = $translation instanceof TagTranslation ? $translation->name : null;
 
                 if (is_string($name) && mb_trim($name) !== '') {
                     $names[] = $name;
