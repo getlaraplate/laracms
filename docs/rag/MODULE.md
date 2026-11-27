@@ -235,6 +235,8 @@ flowchart LR
 
 `Location` extends `Core\Overrides\Model`, uses `HasPlace` to point to a canonical `places.id` row (Core), `HasSpatial` for geometry via `geolocation` Point, `HasSlug`, and `HasTags`. Geocoding is an explicit action: `GeocodeLocationAction` injects `Core\Contracts\Geocoding\IGeocodingService`. The default binding is `NominatimService` (`Modules/CMS/app/Services/NominatimService.php`) which calls OpenStreetMap Nominatim and maps results into a partially-filled, **non-persisted** `Location`. The Searchable mapping prefers the canonical `Place` document fields when `place_id` resolves, otherwise emits a manual `geocode` array `[lat, lon]`.
 
+In the backoffice the location form edits the geography of the related `Place`: the edit page fills address, city, province, country, postcode, zone and geolocation from it (they are not columns of the location row). Geolocation is typed as `latitude, longitude` (latitude within ±90, longitude within ±180, anything else is a validation error) and is written only when it changed: a new pair writes the point, an emptied field clears it, and on spatial drivers `Place` aligns its decimals to either.
+
 ```mermaid
 flowchart LR
   Caller["Form / API request"]

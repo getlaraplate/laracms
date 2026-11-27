@@ -85,6 +85,7 @@ return [
         'geocodeFilled' => 'Geographic fields resolved.',
         'geocodeNeedQuery' => 'Enter an address or name first (min 3 chars].',
         'geocodeNoResult' => 'No match found for this query.',
+        'geolocationInvalid' => 'Enter the latitude and longitude as "latitude, longitude" (e.g. 45.4642, 9.19).',
         'rejectFailed' => 'Rejection failed.',
         'rejectReasonRequired' => 'Provide a reason to reject.',
         'rejected' => 'Revision rejected.',
