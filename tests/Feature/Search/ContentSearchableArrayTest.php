@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\CMS\Casts\EntityType;
 use Modules\CMS\Models\Content;
@@ -182,4 +183,23 @@ it('keeps tag names out of the embedding header', function (): void {
     attachTagsWithMissingTranslation($content);
 
     expect($content->fresh(['translations', 'tags.translations'])->embedHeader('it'))->not->toContain('Bici elettrica');
+});
+
+it('builds tag names from the preloaded relations without further queries', function (): void {
+    $content = createBilingualSearchableContent('Titolo di prova', 'Test title');
+    attachTagsWithMissingTranslation($content);
+
+    $loaded = Content::query()->findOrFail($content->id)->load(new Content()->toSearchableWith());
+
+    $queries = [];
+    DB::listen(static function ($query) use (&$queries): void {
+        $queries[] = $query->sql;
+    });
+
+    $document = $loaded->toSearchableArray();
+
+    $tagQueries = array_filter($queries, static fn (string $sql): bool => str_contains($sql, 'tags'));
+
+    expect($document['tag_names'])->toEqual(['it' => ['Cinema', 'Bici elettrica'], 'en' => ['Cinema']])
+        ->and($tagQueries)->toBe([]);
 });

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\CMS\Casts\EntityType;
@@ -26,6 +27,7 @@ use Modules\CMS\Models\Pivot\Categorizable;
 use Modules\CMS\Models\Pivot\Contributable;
 use Modules\CMS\Models\Pivot\Locatable;
 use Modules\CMS\Models\Pivot\Relatable;
+use Modules\CMS\Models\Pivot\Taggable as TaggablePivot;
 use Modules\CMS\Models\Translations\ContentTranslation;
 use Modules\CMS\Observers\ContentObserver;
 use Modules\CMS\Scopes\HidesExtendedContent;
@@ -273,6 +275,23 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, ILo
     }
 
     /**
+     * The tags of the content in every language: `tags()` is narrowed by the Tag
+     * LocaleScope to the tags translated in the active language, this is not.
+     * Used to index the tag names of all languages.
+     *
+     * @return MorphToMany<Tag, $this, TaggablePivot, 'pivot'>
+     */
+    public function tagsAcrossLocales(): MorphToMany
+    {
+        return $this
+            ->morphToMany(Tag::class, 'taggable', CMSTables::Taggables->value)
+            ->using(TaggablePivot::class)
+            ->withTimestamps()
+            ->withoutGlobalScope(LocaleScope::class)
+            ->ordered();
+    }
+
+    /**
      * The locations that belong to the content.
      *
      * @return BelongsToMany<Location, $this, Locatable, 'pivot'>
@@ -406,6 +425,7 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, ILo
             'categories.translations',
             'categories.ancestors.translations',
             'tags',
+            'tagsAcrossLocales.translations',
             'locations',
             'references',
             'translations',
@@ -839,14 +859,14 @@ final class Content extends Model implements HasMedia, IDynamicContentModel, ILo
      * without a translation in a language adds nothing there, so a search in a
      * language never matches a name written in another one. The `tags` relation
      * is narrowed by LocaleScope to the tags translated in the active language,
-     * so this reads them without it, with their translations, in one query.
+     * so this reads the `tagsAcrossLocales` relation and its translations, preloaded by `toSearchableWith()`.
      *
      * @param  list<string>  $locales
      * @return array<string, list<string>>
      */
     private function tagNamesByLocale(array $locales): array
     {
-        $tags = $this->tags()->withoutGlobalScope(LocaleScope::class)->with('translations')->get();
+        $tags = $this->tagsAcrossLocales;
         $byLocale = [];
 
         foreach ($locales as $locale) {
