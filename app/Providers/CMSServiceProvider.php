@@ -14,10 +14,12 @@ use Modules\CMS\Import\TagImporter;
 use Modules\CMS\Models\Content;
 use Modules\CMS\Models\ContentReference;
 use Modules\CMS\Models\Translations\ContentTranslation;
+use Modules\CMS\Models\Translations\TagTranslation;
 use Modules\CMS\Observers\ContentExtensionObserver;
 use Modules\CMS\Observers\ContentReferenceObserver;
 use Modules\CMS\Observers\ContentTranslationObserver;
 use Modules\CMS\Observers\PlaceObserver;
+use Modules\CMS\Observers\TagTranslationObserver;
 use Modules\CMS\Services\CommentModerationAdapter;
 use Modules\CMS\Services\ContentExtenderRegistry;
 use Modules\CMS\Services\ContentOwnerAuthorizer;
@@ -90,6 +92,9 @@ final class CMSServiceProvider extends ModuleServiceProvider
 
         // A reference is part of its content's search document: re-send the content when one changes.
         ContentReference::observe(ContentReferenceObserver::class);
+
+        // Tag names are part of the search document of the contents carrying the tag: re-send them when one changes.
+        TagTranslation::observe(TagTranslationObserver::class);
 
         // Content-extension seam: apply a direct content deletion to its extender (C9, C10).
         Content::observe(ContentExtensionObserver::class);
