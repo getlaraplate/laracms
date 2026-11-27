@@ -60,6 +60,7 @@ return [
         'entity' => 'Entiteta',
         'location' => 'Lokacija',
         'media_images' => 'Slike',
+        'no_type' => 'Brez vrste',
         'order_column' => 'Položaj',
         'parent' => 'Nadrejeno',
         'postcode' => 'Poštna številka',

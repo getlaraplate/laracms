@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Filament\Tables\Columns\TextColumn;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Modules\CMS\Filament\Resources\Tags\Pages\ListTags;
@@ -16,6 +17,16 @@ beforeEach(function (): void {
     HttpContext::panelActorWithoutApproval(new Tag, ['select']);
 });
 
+/**
+ * The path data of a heroicon: what identifies the icon in a rendered cell, whatever attributes the cell adds.
+ */
+function tag_type_icon_path(string $icon): string
+{
+    preg_match('/ d="([^"]+)"/', svg($icon)->contents(), $matches);
+
+    return $matches[1];
+}
+
 it('renders the type column for a registered type, an unregistered type and no type', function (): void {
     $people = Tag::factory()->create(['type' => 'people']);
     $genre = Tag::factory()->create(['type' => 'genre']);
@@ -27,17 +38,20 @@ it('renders the type column for a registered type, an unregistered type and no t
         ->assertTableColumnExists('type')
         ->assertTableColumnStateSet('type', 'people', $people)
         ->assertTableColumnStateSet('type', 'genre', $genre)
-        ->assertTableColumnStateSet('type', null, $untyped);
+        ->assertTableColumnStateSet('type', __('cms.fields.no_type'), $untyped);
 });
 
-it('shows the registered icon, the generic icon for no type and a letter for an unregistered type', function (): void {
+it('renders the registered icon, the generic icon for no type and a letter for an unregistered type', function (): void {
     $people = Tag::factory()->create(['type' => 'people']);
     $genre = Tag::factory()->create(['type' => 'genre']);
     $untyped = Tag::factory()->create(['type' => null]);
 
+    $people_icon = tag_type_icon_path('heroicon-o-users');
+    $tag_icon = tag_type_icon_path('heroicon-o-tag');
+
     Livewire::test(ListTags::class)
         ->loadTable()
-        ->assertTableColumnExists('type', static fn ($column): bool => $column->getIcon('people') === 'heroicon-o-users', $people)
-        ->assertTableColumnExists('type', static fn ($column): bool => $column->getIcon('genre') === null && $column->formatState('genre') === 'G genre', $genre)
-        ->assertTableColumnExists('type', static fn ($column): bool => $column->getIcon(null) === 'heroicon-o-tag', $untyped);
+        ->assertTableColumnExists('type', static fn (TextColumn $column): bool => str_contains($column->toEmbeddedHtml(), $people_icon), $people)
+        ->assertTableColumnExists('type', static fn (TextColumn $column): bool => ! str_contains($column->toEmbeddedHtml(), '<svg') && str_contains($column->toEmbeddedHtml(), 'G genre'), $genre)
+        ->assertTableColumnExists('type', static fn (TextColumn $column): bool => str_contains($column->toEmbeddedHtml(), $tag_icon) && str_contains($column->toEmbeddedHtml(), e(__('cms.fields.no_type'))), $untyped);
 });

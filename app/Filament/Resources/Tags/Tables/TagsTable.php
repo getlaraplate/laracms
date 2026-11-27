@@ -30,9 +30,10 @@ final class TagsTable
                         ->searchable()
                         ->toggleable(isToggledHiddenByDefault: true),
                     TextColumn::make('type')
-                        ->icon(static fn (?string $state): ?string => resolve(TagTypeRegistry::class)->heroiconFor($state))
-                        ->formatStateUsing(static function (?string $state): ?string {
-                            $letter = resolve(TagTypeRegistry::class)->letterFor($state);
+                        ->default(static fn (): string => __('cms.fields.no_type'))
+                        ->icon(static fn (Tag $record): ?string => resolve(TagTypeRegistry::class)->heroiconFor($record->type))
+                        ->formatStateUsing(static function (Tag $record, string $state): string {
+                            $letter = resolve(TagTypeRegistry::class)->letterFor($record->type);
 
                             return $letter === null ? $state : $letter . ' ' . $state;
                         })

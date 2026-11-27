@@ -287,6 +287,8 @@ The free-text tag `type` has an extensible registry, `Modules\CMS\Services\TagTy
 
 `CMSServiceProvider::boot()` registers the six CMS types: `search` (`heroicon-o-magnifying-glass`, Lucide `Search`), `people` (`heroicon-o-users`, `Users`), `locations` (`heroicon-o-map-pin`, `MapPin`), `organizations` (`heroicon-o-building-office`, `Building2`), `topics` (`heroicon-o-hashtag`, `Hash`) and `events` (`heroicon-o-calendar`, `Calendar`). Labels live in `cms.tag_types.<type>` in every CMS lang file.
 
+In the Filament tags table the `type` column shows the registered Heroicon before the type slug, the upper-case first letter before a type that is not registered (`G genre`), and the generic `heroicon-o-tag` with the translated label `cms.fields.no_type` for a tag with no type.
+
 A module adds a type from its own service provider boot: `app(TagTypeRegistry::class)->register(new TagTypeDefinition('brands', 'mymodule.tag_types.brands', 'heroicon-o-star', 'Star'))`. Registering the same type again replaces the earlier definition in place.
 
 `GET cms/tag-types` (route `cms.tag-types.index`, `auth` middleware) returns, through `ResponseBuilder`, `data` as a list of `{type, label, heroicon, lucide}` with `label` translated in the request locale.

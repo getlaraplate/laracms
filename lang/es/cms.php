@@ -60,6 +60,7 @@ return [
         'entity' => 'Entidad',
         'location' => 'Ubicación',
         'media_images' => 'Imágenes',
+        'no_type' => 'Sin tipo',
         'order_column' => 'Posición',
         'parent' => 'Padre',
         'postcode' => 'Código postal',
