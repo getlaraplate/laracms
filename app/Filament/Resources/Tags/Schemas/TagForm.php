@@ -34,12 +34,12 @@ final class TagForm
                             }
                         },
                     ]),
-                // Offers the types already in use, so an editor reuses one instead of spelling a near duplicate; what is
+                // Offers the registered types and the types already in use, so an editor reuses one instead of spelling a near duplicate; what is
                 // typed is offered too, as the slug it is stored as, so a new type is still one pick away.
                 Select::make('type')
                     ->searchable()
-                    ->options(static fn (): array => self::typeOptions())
-                    ->getSearchResultsUsing(static fn (string $search): array => self::typeSearchResults($search))
+                    ->options(static fn (): array => TagTypeOptions::all())
+                    ->getSearchResultsUsing(static fn (string $search): array => TagTypeOptions::search($search))
                     ->getOptionLabelUsing(static fn (?string $value): ?string => Tag::normalizeType($value)),
                 // A new tag goes last whatever is typed (`sort_when_creating`), so the position is edited only
                 // once the tag exists.
@@ -50,34 +50,5 @@ final class TagForm
                     ->hiddenOn('create')
                     ->helperText(__('cms.help.tagPosition')),
             ]);
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private static function typeOptions(): array
-    {
-        $types = Tag::getTypes()->filter()->sort()->values()->all();
-
-        return array_combine($types, $types);
-    }
-
-    /**
-     * The types in use that contain what is typed, then what is typed as a new type when no type in use is it.
-     *
-     * @return array<string, string>
-     */
-    private static function typeSearchResults(string $search): array
-    {
-        $typed = Tag::normalizeType($search);
-
-        if ($typed === null) {
-            return self::typeOptions();
-        }
-
-        $results = array_filter(self::typeOptions(), static fn (string $type): bool => str_contains($type, $typed));
-        $results[$typed] = $typed;
-
-        return $results;
     }
 }
