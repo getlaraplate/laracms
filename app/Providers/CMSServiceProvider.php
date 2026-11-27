@@ -21,6 +21,8 @@ use Modules\CMS\Observers\PlaceObserver;
 use Modules\CMS\Services\CommentModerationAdapter;
 use Modules\CMS\Services\ContentExtenderRegistry;
 use Modules\CMS\Services\ContentOwnerAuthorizer;
+use Modules\CMS\Services\TagTypeDefinition;
+use Modules\CMS\Services\TagTypeRegistry;
 use Modules\Core\ApplicationContent\Contracts\ApplicationContentRetrievalProviderRegistryInterface;
 use Modules\Core\Graph\Contracts\GraphProviderRegistryInterface;
 use Modules\Core\Import\Support\EntityImporterRegistry;
@@ -52,6 +54,7 @@ final class CMSServiceProvider extends ModuleServiceProvider
         parent::register();
 
         $this->app->singleton(ContentExtenderRegistry::class);
+        $this->app->singleton(TagTypeRegistry::class);
 
         $this->app->register(ImportServiceProvider::class);
     }
@@ -90,6 +93,19 @@ final class CMSServiceProvider extends ModuleServiceProvider
 
         // Content-extension seam: apply a direct content deletion to its extender (C9, C10).
         Content::observe(ContentExtensionObserver::class);
+
+        $tagTypes = $this->app->make(TagTypeRegistry::class);
+
+        foreach ([
+            'search' => ['heroicon-o-magnifying-glass', 'Search'],
+            'people' => ['heroicon-o-users', 'Users'],
+            'locations' => ['heroicon-o-map-pin', 'MapPin'],
+            'organizations' => ['heroicon-o-building-office', 'Building2'],
+            'topics' => ['heroicon-o-hashtag', 'Hash'],
+            'events' => ['heroicon-o-calendar-days', 'CalendarDays'],
+        ] as $type => [$heroicon, $lucide]) {
+            $tagTypes->register(new TagTypeDefinition($type, 'cms.tag_types.' . $type, $heroicon, $lucide));
+        }
 
         $this->app->make(ModerationAdapterRegistry::class)
             ->register($this->app->make(CommentModerationAdapter::class));

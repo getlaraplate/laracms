@@ -113,4 +113,12 @@ return [
         'scheduled' => 'Načrtovane',
         'scheduledHint' => 'Vsebine, ki čakajo na objavo',
     ],
+    'tag_types' => [
+        'search' => 'Iskanje',
+        'people' => 'Osebe',
+        'locations' => 'Lokacije',
+        'organizations' => 'Organizacije',
+        'topics' => 'Teme',
+        'events' => 'Dogodki',
+    ],
 ];

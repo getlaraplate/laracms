@@ -281,6 +281,18 @@ flowchart LR
   end
 ```
 
+### Tag types
+
+The free-text tag `type` has an extensible registry, `Modules\CMS\Services\TagTypeRegistry` (singleton, like `ContentExtenderRegistry`), holding `TagTypeDefinition` objects: the normalized type slug, the lang key of its label, a Heroicon (Filament backoffice) and a Lucide icon name (Vue frontend). `all()` returns the definitions in registration order; `find()`, `heroiconFor()` and `letterFor()` normalize the type with `Tag::normalizeType()` first. `heroiconFor(null)` is `heroicon-o-tag` (a tag with no type keeps its meaning: any type); `heroiconFor()` is null for a type that is not registered, and `letterFor()` then gives its upper-case first letter as a fallback glyph (null for a registered type or no type). A type that is not registered stays valid.
+
+`CMSServiceProvider::boot()` registers the six CMS types: `search` (`heroicon-o-magnifying-glass`, Lucide `Search`), `people` (`heroicon-o-users`, `Users`), `locations` (`heroicon-o-map-pin`, `MapPin`), `organizations` (`heroicon-o-building-office`, `Building2`), `topics` (`heroicon-o-hashtag`, `Hash`) and `events` (`heroicon-o-calendar-days`, `CalendarDays`). Labels live in `cms.tag_types.<type>` in every CMS lang file.
+
+A module adds a type from its own service provider boot: `app(TagTypeRegistry::class)->register(new TagTypeDefinition('brands', 'mymodule.tag_types.brands', 'heroicon-o-star', 'Star'))`. Registering the same type again replaces the earlier definition in place.
+
+`GET cms/tag-types` (route `cms.tag-types.index`, `auth` middleware) returns, through `ResponseBuilder`, `data` as a list of `{type, label, heroicon, lucide}` with `label` translated in the request locale.
+
+`people` and `locations` tags are labels that classify content; they are not `Contributor` or `Location` records, which carry their own data and relations. `search` tags are search aids: the API returns them with their type, and a site that does not want to show them filters them out by type.
+
 ### Provenance, references and AI-assistance disclosure
 
 Three separate answers to "where did this come from", none of which is a column on `cms_contents`.

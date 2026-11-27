@@ -113,4 +113,12 @@ return [
         'scheduled' => 'Programmati',
         'scheduledHint' => 'Contenuti in attesa di pubblicazione',
     ],
+    'tag_types' => [
+        'search' => 'Ricerca',
+        'people' => 'Persone',
+        'locations' => 'Luoghi',
+        'organizations' => 'Organizzazioni',
+        'topics' => 'Argomenti',
+        'events' => 'Eventi',
+    ],
 ];
