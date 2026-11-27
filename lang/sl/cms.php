@@ -85,6 +85,7 @@ return [
         'geocodeFilled' => 'Geografska polja so izpolnjena.',
         'geocodeNeedQuery' => 'Najprej vnesite naslov ali ime (vsaj 3 znaki].',
         'geocodeNoResult' => 'Za to iskanje ni zadetkov.',
+        'geolocationInvalid' => 'Vnesite zemljepisno širino in dolžino kot "širina, dolžina" (npr. 45.4642, 9.19).',
         'rejectFailed' => 'Zavrnitev ni uspela.',
         'rejectReasonRequired' => 'Navedite razlog za zavrnitev.',
         'rejected' => 'Revizija zavrnjena.',
